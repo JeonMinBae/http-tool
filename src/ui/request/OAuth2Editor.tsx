@@ -2,6 +2,7 @@ import { useState } from "react";
 import { getNewToken, isExpired, tokenKey } from "../../core/oauth2";
 import type { OAuth2Auth } from "../../core/model";
 import { oauthDeps, resolveOAuth, tokenCache, useOAuthTokens } from "../../state/oauthTokens";
+import { toast } from "../../state/toasts";
 import { Button } from "../common/Button";
 import { useScopes } from "../editor/useScopes";
 
@@ -43,8 +44,10 @@ export function OAuth2Editor({ auth, onChange, root }: { auth: OAuth2Auth; onCha
     setError(null);
     try {
       await getNewToken(resolved, oauthDeps, tokenCache);
+      toast.success("Access token received");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      toast.error("Could not get access token", e);
     } finally {
       setBusy(false);
     }

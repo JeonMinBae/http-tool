@@ -1,15 +1,16 @@
 import { open as openDialogPicker, save as saveDialogPicker } from "@tauri-apps/plugin-dialog";
 import { fileApi } from "../ipc";
 import { sanitizeName, type TreeNode } from "../core/collectionRepo";
-import type { ImportPlan, TransferNode } from "../core/transfer/model";
+import { countRequests, type ImportPlan, type TransferNode } from "../core/transfer/model";
 import { emptyRequest, emptyWebSocket, type HttpRequestDoc } from "../core/model";
 import { samePath } from "../core/path";
 import { useStreams } from "../state/streams";
 import { useExpanded } from "../state/treeExpand";
 import { useWebSockets } from "../state/websockets";
 import { isDirty, useTabs } from "../state/tabs";
+import { toast } from "../state/toasts";
 import { collectionRepo, useWorkspace } from "../state/workspace";
-import { alertError, askChoice, askText, confirmDanger } from "./common/dialogs";
+import { askChoice, askText, confirmDanger } from "./common/dialogs";
 import { pickSaveLocation } from "./tabs/SaveAsDialog";
 
 const ws = () => useWorkspace.getState();
@@ -19,10 +20,15 @@ async function guard<T>(title: string, fn: () => Promise<T>): Promise<T | undefi
   try {
     return await fn();
   } catch (e) {
-    await alertError(title, e);
+    toast.error(title, e);
     return undefined;
   }
 }
+
+const importedMessage = (items: TransferNode[]) => {
+  const n = countRequests(items);
+  return `Imported ${n} ${n === 1 ? "request" : "requests"}`;
+};
 
 export async function openCollectionFromDialog() {
   const picked = await openDialogPicker({ directory: true, multiple: false, title: "Open collection folder" });
@@ -45,6 +51,7 @@ export async function exportToFile(
   if (!path) return false;
   const done = await guard("Could not export", async () => {
     await fileApi.saveText(path, render(path));
+    toast.success("Exported", path);
     return true;
   });
   return done ?? false;
@@ -61,6 +68,7 @@ export async function importAsCollection(plan: Extract<ImportPlan, { kind: "coll
     await collectionRepo.importItems(col.root, plan.items);
     useExpanded.getState().expand(col.root);
     await ws().reload(col.root);
+    toast.success(importedMessage(plan.items));
     return true;
   });
   return done ?? false;
@@ -72,6 +80,7 @@ export async function importIntoFolder(root: string, dir: string, items: Transfe
     await collectionRepo.importItems(dir, items);
     useExpanded.getState().expand(root, dir);
     await ws().reload(root);
+    toast.success(importedMessage(items));
     return true;
   });
   return done ?? false;

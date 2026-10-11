@@ -2,6 +2,7 @@ import { useState, type DragEvent, type MouseEvent } from "react";
 import type { LoadedCollection, TreeNode } from "../../core/collectionRepo";
 import { dirName, isInside, samePath } from "../../core/path";
 import { useTabs } from "../../state/tabs";
+import { toast } from "../../state/toasts";
 import { useExpanded } from "../../state/treeExpand";
 import {
   closeCollection,
@@ -174,7 +175,14 @@ export function CollectionTree({ col }: { col: LoadedCollection }) {
     { label: "Run Collection", onSelect: () => openRunner(col.root, col.root, col.doc.name) },
     { label: "Export…", onSelect: () => openExportDialog(col) },
     "separator",
-    { label: "Copy Path", onSelect: () => navigator.clipboard.writeText(col.root) },
+    {
+      label: "Copy Path",
+      onSelect: () =>
+        void navigator.clipboard.writeText(col.root).then(
+          () => toast.success("Path copied", col.root),
+          (e) => toast.error("Could not copy path", e),
+        ),
+    },
     { label: "Close Collection", onSelect: () => closeCollection(col.root) },
   ];
 

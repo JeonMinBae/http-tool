@@ -4,8 +4,8 @@ import { base64ToUtf8 } from "../../core/encoding";
 import { detectKind, formatSent, formatSize, headerValue, parseSetCookie, prettyJson, prettyXml, PRETTY_LIMIT, type BodyKind } from "../../core/responseFormat";
 import { fileApi, type HttpResult } from "../../ipc";
 import { useResponses } from "../../state/responses";
+import { toast } from "../../state/toasts";
 import type { TestResult } from "../../script/protocol";
-import { alertError } from "../common/dialogs";
 import { CodeEditor, type EditorLanguage } from "../editor/CodeEditor";
 import { SectionTabs } from "../request/RequestEditor";
 import { EventsView } from "./EventsView";
@@ -53,7 +53,7 @@ function Body({ r }: { r: HttpResult }) {
 
   const saveToFile = async () => {
     const path = await save({ title: "Save response body" });
-    if (path) await fileApi.saveBase64(path, r.bodyBase64).catch((e) => alertError("Could not save", e));
+    if (path) await fileApi.saveBase64(path, r.bodyBase64).catch((e) => toast.error("Could not save", e));
   };
 
   return (
