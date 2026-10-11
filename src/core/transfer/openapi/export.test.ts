@@ -117,4 +117,33 @@ describe("toOpenApi", () => {
     expect(all).toMatch(/Collection "API": scripts/);
     expect(all).toMatch(/file paths are not exported/);
   });
+
+  it("leaves credential-like literals out of examples", () => {
+    const req: HttpRequestDoc = {
+      ...emptyRequest("Login"),
+      method: "POST",
+      url: "https://user:pw@api.test/login?api_key=k1&page=2",
+      params: [
+        { key: "api_key", value: "k1", enabled: true },
+        { key: "page", value: "2", enabled: true },
+      ],
+      headers: [
+        { key: "X-Api-Key", value: "sk_live", enabled: true },
+        { key: "X-Token", value: "{{token}}", enabled: true },
+      ],
+      cookies: [{ key: "sid", value: "abc", enabled: true }],
+      body: { type: "raw", language: "json", content: '{"user":"me","password":"pw","nested":{"accessToken":"t"}}' },
+    };
+    const { spec, warnings } = toOpenApi({ title: "x", collection: emptyCollection("x"), items: [req] });
+    expect(spec.servers).toEqual([{ url: "https://api.test" }]);
+    const op = (spec.paths as Record<string, Record<string, Obj>>)["/login"].post;
+    const examples = Object.fromEntries((op.parameters as Obj[]).map((p) => [p.name, p.example]));
+    expect(examples).toEqual({ api_key: undefined, page: "2", "X-Api-Key": undefined, "X-Token": "{{token}}", sid: undefined });
+    expect(op.requestBody).toMatchObject({
+      content: { "application/json": { example: { user: "me", password: "", nested: { accessToken: "" } } } },
+    });
+    const all = warnings.join("\n");
+    expect(all).toMatch(/Credentials in the server URL/);
+    expect(all).toMatch(/"Login": credential-like values/);
+  });
 });

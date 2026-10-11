@@ -4,6 +4,7 @@ import type { Auth, CollectionDoc, FolderDoc, HttpRequestDoc, KeyValue } from ".
 import { RAW_CONTENT_TYPE } from "../../prepare";
 import type { Obj } from "../../yaml";
 import type { TransferNode } from "../model";
+import { isLiteral, isSensitiveName } from "../redact";
 
 export interface OpenApiExportInput {
   title: string;
@@ -42,7 +43,9 @@ export function toOpenApi(input: OpenApiExportInput): { spec: Obj; warnings: str
     input.collection.variables.filter((v) => v.enabled && !v.secret && v.value && !v.value.includes("{{")).map((v) => [v.key, v.value]),
   );
 
-  const toServerUrl = (s: string) => {
+  const toServerUrl = (raw: string) => {
+    const s = raw.replace(/^([a-z][a-z0-9+.-]*:\/\/)[^@/]*@/i, "$1");
+    if (s !== raw) warnings.push(`Credentials in the server URL ${raw.split("@").pop()} were removed.`);
     const unresolved: string[] = [];
     const url = s.replace(/\{\{([^{}]+)\}\}/g, (_, n: string) => {
       const value = known.get(n);
@@ -149,23 +152,45 @@ function schemeDef(a: Auth): Obj | null {
 
 const SKIP_HEADERS = new Set(["content-type", "authorization"]);
 
-const param = (kv: KeyValue, where: string): Obj => ({
+/** Set when a credential-looking literal was left out of an example. */
+interface Scrub {
+  hit: boolean;
+}
+
+const hides = (name: string, value: string, scrub: Scrub, always = false) => {
+  const hide = (always || isSensitiveName(name)) && isLiteral(value);
+  if (hide) scrub.hit = true;
+  return hide;
+};
+
+const param = (kv: KeyValue, where: string, scrub: Scrub): Obj => ({
   name: kv.key,
   in: where,
   required: kv.enabled,
   schema: { type: "string" },
-  ...(kv.value && { example: kv.value }),
+  ...(kv.value && !hides(kv.key, kv.value, scrub, where === "cookie") && { example: kv.value }),
 });
 
+/** Blanks string values under credential-looking keys, at any depth. */
+function scrubExample(v: unknown, scrub: Scrub): unknown {
+  if (Array.isArray(v)) return v.map((x) => scrubExample(x, scrub));
+  if (v === null || typeof v !== "object") return v;
+  return Object.fromEntries(
+    Object.entries(v).map(([k, x]) => [k, typeof x === "string" && hides(k, x, scrub) ? "" : scrubExample(x, scrub)]),
+  );
+}
+
 function operationFor(n: HttpRequestDoc, oaPath: string, tag: string | null, warnings: string[]): Obj {
+  const scrub: Scrub = { hit: false };
   const pathParams = [...oaPath.matchAll(/\{([^}]+)\}/g)].map((m) => ({ name: m[1], in: "path", required: true, schema: { type: "string" } }));
   const parameters = [
     ...pathParams,
-    ...n.params.filter((p) => p.key).map((p) => param(p, "query")),
-    ...n.headers.filter((h) => h.key && !SKIP_HEADERS.has(h.key.toLowerCase())).map((h) => param(h, "header")),
-    ...n.cookies.filter((c) => c.key).map((c) => param(c, "cookie")),
+    ...n.params.filter((p) => p.key).map((p) => param(p, "query", scrub)),
+    ...n.headers.filter((h) => h.key && !SKIP_HEADERS.has(h.key.toLowerCase())).map((h) => param(h, "header", scrub)),
+    ...n.cookies.filter((c) => c.key).map((c) => param(c, "cookie", scrub)),
   ];
-  const requestBody = requestBodyFor(n, warnings);
+  const requestBody = requestBodyFor(n, warnings, scrub);
+  if (scrub.hit) warnings.push(`"${n.name}": credential-like values were left out of the examples.`);
   return {
     ...(tag && { tags: [tag] }),
     summary: n.name,
@@ -175,7 +200,7 @@ function operationFor(n: HttpRequestDoc, oaPath: string, tag: string | null, war
   };
 }
 
-function requestBodyFor(n: HttpRequestDoc, warnings: string[]): Obj | null {
+function requestBodyFor(n: HttpRequestDoc, warnings: string[], scrub: Scrub): Obj | null {
   const b = n.body;
   const ct = n.headers.find((h) => h.enabled && h.key.toLowerCase() === "content-type")?.value;
   const media = (type: string, m: Obj): Obj => ({ content: { [type]: m } });
@@ -184,7 +209,7 @@ function requestBodyFor(n: HttpRequestDoc, warnings: string[]): Obj | null {
       if (b.language === "json") {
         try {
           const v: unknown = JSON.parse(b.content);
-          return media(ct ?? RAW_CONTENT_TYPE.json, { schema: inferSchema(v), example: v });
+          return media(ct ?? RAW_CONTENT_TYPE.json, { schema: inferSchema(v), example: scrubExample(v, scrub) });
         } catch {
           warnings.push(`"${n.name}": body is not valid JSON; exported as a string example.`);
           return media(ct ?? RAW_CONTENT_TYPE.json, { example: b.content });
@@ -195,7 +220,7 @@ function requestBodyFor(n: HttpRequestDoc, warnings: string[]): Obj | null {
     case "urlencoded":
       return media("application/x-www-form-urlencoded", {
         schema: { type: "object", properties: Object.fromEntries(b.fields.map((f) => [f.key, { type: "string" }])) },
-        example: Object.fromEntries(b.fields.map((f) => [f.key, f.value])),
+        example: scrubExample(Object.fromEntries(b.fields.map((f) => [f.key, f.value])), scrub),
       });
     case "form-data": {
       if (b.fields.some((f) => f.kind === "file" && f.value)) warnings.push(`"${n.name}": form-data file paths are not exported.`);
@@ -205,7 +230,7 @@ function requestBodyFor(n: HttpRequestDoc, warnings: string[]): Obj | null {
           type: "object",
           properties: Object.fromEntries(b.fields.map((f) => [f.key, f.kind === "file" ? { type: "string", format: "binary" } : { type: "string" }])),
         },
-        ...(texts.length > 0 && { example: Object.fromEntries(texts.map((f) => [f.key, f.value])) }),
+        ...(texts.length > 0 && { example: scrubExample(Object.fromEntries(texts.map((f) => [f.key, f.value])), scrub) }),
       });
     }
     case "binary":

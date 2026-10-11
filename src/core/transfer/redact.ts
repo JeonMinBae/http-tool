@@ -1,8 +1,11 @@
 import type { Auth, Variable } from "../model";
 import type { TransferNode } from "./model";
 
-const isVarRef = (s: string) => /^\s*\{\{[^{}]+\}\}\s*$/.test(s);
+export const isVarRef = (s: string) => /^\s*\{\{[^{}]+\}\}\s*$/.test(s);
 const blank = (s: string) => (isVarRef(s) ? s : "");
+export const isSensitiveName = (name: string) => SENSITIVE_NAME.test(name);
+/** A typed-in value (not empty, not a `{{var}}` reference). */
+export const isLiteral = (value: string) => value !== "" && !isVarRef(value);
 
 /** Blanks literal credentials; `{{var}}` references are kept. */
 export function redactAuth(a: Auth): Auth {
@@ -44,9 +47,8 @@ export function unredactedCredentialWarnings(items: TransferNode[]): string[] {
         walk(n.items);
         continue;
       }
-      const literal = (kv: { value: string }) => kv.value !== "" && !isVarRef(kv.value);
-      const headers = n.headers.filter((h) => SENSITIVE_NAME.test(h.key) && literal(h)).map((h) => `header ${h.key}`);
-      const cookies = n.kind === "http" ? n.cookies.filter((c) => c.key && literal(c)).map((c) => `cookie ${c.key}`) : [];
+      const headers = n.headers.filter((h) => isSensitiveName(h.key) && isLiteral(h.value)).map((h) => `header ${h.key}`);
+      const cookies = n.kind === "http" ? n.cookies.filter((c) => c.key && isLiteral(c.value)).map((c) => `cookie ${c.key}`) : [];
       const found = [...headers, ...cookies];
       if (found.length) out.push(`"${n.name}": ${found.join(", ")} will be exported as plain text.`);
     }

@@ -20,7 +20,7 @@ cURL 변환은 별도 기능이다 → [cURL 변환](curl.md).
 
 ### OpenAPI로 내보내기
 
-파일 확장자가 `.yaml`·`.yml`이면 YAML, 그 외는 JSON으로 저장한다. 변수는 값으로 바꾸지 않는다.
+파일 확장자가 `.yaml`·`.yml`이면 YAML, 그 외는 JSON으로 저장한다. 변수는 값으로 바꾸지 않는다. 자격증명으로 보이는 직접 입력 값(이름에 auth·token·key·secret·password·session·cookie가 들어간 파라미터·헤더·본문 필드, 모든 쿠키, 서버 URL의 `user:pass@`)은 example에서 빼고 경고한다. `{{변수}}` 참조는 그대로 둔다.
 
 | 요청 | OpenAPI |
 | --- | --- |
