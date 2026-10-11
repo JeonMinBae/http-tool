@@ -50,8 +50,8 @@ function Palette({ close }: { close: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-center bg-black/30 pt-[12vh]" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <div className="flex max-h-[60vh] w-[600px] flex-col overflow-hidden rounded-lg border border-line bg-panel shadow-2xl">
+    <div className="fixed inset-0 z-40 flex animate-fade-in justify-center bg-black/30 pt-[12vh]" onMouseDown={(e) => e.target === e.currentTarget && close()}>
+      <div className="flex max-h-[60vh] w-[600px] animate-pop-in flex-col overflow-hidden rounded-lg border border-line bg-panel shadow-2xl">
         <input
           autoFocus
           className="border-b border-line bg-transparent px-4 py-3 text-[14px] outline-none"

@@ -16,8 +16,8 @@ export function Modal({ title, onClose, children, footer, width = 420 }: {
     return () => window.removeEventListener("keydown", esc);
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="flex max-h-[85vh] flex-col rounded-lg border border-line bg-panel shadow-xl" style={{ width }}>
+    <div className="fixed inset-0 z-40 flex animate-fade-in items-center justify-center bg-black/40" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="flex max-h-[85vh] animate-pop-in flex-col rounded-lg border border-line bg-panel shadow-xl" style={{ width }}>
         <div className="border-b border-line px-4 py-2.5 font-semibold">{title}</div>
         <div className="min-h-0 flex-1 overflow-auto p-4">{children}</div>
         {footer && <div className="flex justify-end gap-2 border-t border-line px-4 py-2.5">{footer}</div>}

@@ -71,10 +71,12 @@ function ConsoleDock() {
     window.addEventListener("mouseup", up);
   };
   return (
-    <div className="flex shrink-0 flex-col" style={{ height }}>
-      <div className="h-1 shrink-0 cursor-row-resize border-t border-line hover:bg-accent" onMouseDown={onMouseDown} />
-      <div className="min-h-0 flex-1">
-        <ConsolePanel />
+    <div className="flex shrink-0 flex-col overflow-hidden" style={{ height }}>
+      <div className="flex h-full animate-slide-up flex-col">
+        <div className="h-1 shrink-0 cursor-row-resize border-t border-line transition-colors hover:bg-accent" onMouseDown={onMouseDown} />
+        <div className="min-h-0 flex-1">
+          <ConsolePanel />
+        </div>
       </div>
     </div>
   );
