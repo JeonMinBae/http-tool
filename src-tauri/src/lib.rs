@@ -1,3 +1,4 @@
+mod appdata;
 mod error;
 mod fs_commands;
 mod state;
@@ -11,6 +12,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
+            appdata::appdata_read,
+            appdata::appdata_write,
             fs_commands::collection_register,
             fs_commands::collection_unregister,
             fs_commands::fs_read_tree,

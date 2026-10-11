@@ -32,3 +32,16 @@ export const fsApi: FsApi = {
   copy: (from, to) => invoke("fs_copy", { from, to }),
   remove: (path) => invoke("fs_delete", { path }),
 };
+
+/** JSON documents stored in the app data folder (never inside collections). */
+export type AppDataName = "globals" | "environments" | "settings" | "workspace" | "oauth-tokens" | `secrets/${string}`;
+
+export interface AppDataApi {
+  read<T>(name: AppDataName): Promise<T | null>;
+  write(name: AppDataName, value: unknown): Promise<void>;
+}
+
+export const appDataApi: AppDataApi = {
+  read: (name) => invoke("appdata_read", { name }),
+  write: (name, value) => invoke("appdata_write", { name, value }),
+};
