@@ -1,11 +1,15 @@
 import { useCallback } from "react";
+import { parseCurl } from "../../core/curl/import";
 import { executeRequest } from "../../core/execute";
 import { HTTP_METHODS, type HttpMethod, type HttpRequestDoc } from "../../core/model";
 import { syncParamsFromUrl } from "../../core/params";
 import { useResponses } from "../../state/responses";
 import { useTabs, type Tab } from "../../state/tabs";
 import { saveTab } from "../actions";
-import { Button } from "../common/Button";
+import { Button, IconButton } from "../common/Button";
+import { alertError } from "../common/dialogs";
+import { Icon } from "../common/icons";
+import { openCurlExport } from "../curl/CurlDialogs";
 import { methodColor } from "../common/methodColor";
 import { CodeEditor } from "../editor/CodeEditor";
 import { useVarExtension } from "../editor/useScopes";
@@ -17,6 +21,21 @@ export function UrlBar({ tab }: { tab: Tab<HttpRequestDoc> }) {
   const send = useCallback(() => void executeRequest(tab.id), [tab.id]);
   const d = tab.draft;
   const varExt = useVarExtension(tab.root);
+  const onPaste = useCallback(
+    (text: string) => {
+      if (!/^\s*curl(\.exe)?\s/i.test(text)) return false;
+      try {
+        const { request, warnings } = parseCurl(text);
+        // Keep identity (name/seq) of the tab; replace the request definition.
+        update<HttpRequestDoc>(tab.id, (x) => ({ ...request, name: x.name, seq: x.seq, scripts: x.scripts }));
+        if (warnings.length) void alertError("Imported with warnings", warnings.join("\n"));
+      } catch (e) {
+        void alertError("Could not import cURL", e);
+      }
+      return true;
+    },
+    [tab.id, update],
+  );
 
   return (
     <div className="flex items-center gap-2 px-3 py-2">
@@ -39,6 +58,7 @@ export function UrlBar({ tab }: { tab: Tab<HttpRequestDoc> }) {
             value={d.url}
             placeholder="Enter URL or paste text"
             onEnter={send}
+            onPaste={onPaste}
             onChange={(url) => update<HttpRequestDoc>(tab.id, (x) => ({ ...x, url, params: syncParamsFromUrl(url, x.params) }))}
           />
         </div>
@@ -53,6 +73,9 @@ export function UrlBar({ tab }: { tab: Tab<HttpRequestDoc> }) {
         </Button>
       )}
       <Button onClick={() => void saveTab(tab.id)}>Save</Button>
+      <IconButton title="Export as cURL" onClick={() => openCurlExport(tab)}>
+        <Icon name="code" />
+      </IconButton>
     </div>
   );
 }

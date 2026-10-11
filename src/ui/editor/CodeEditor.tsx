@@ -52,9 +52,11 @@ export interface CodeEditorProps {
   extensions?: Extension[];
   className?: string;
   lineWrapping?: boolean;
+  /** Return true to cancel the default paste. */
+  onPaste?: (text: string) => boolean;
 }
 
-export function CodeEditor({ value, onChange, language = "text", readOnly, singleLine, placeholder, onEnter, extensions = [], className = "", lineWrapping }: CodeEditorProps) {
+export function CodeEditor({ value, onChange, language = "text", readOnly, singleLine, placeholder, onEnter, extensions = [], className = "", lineWrapping, onPaste }: CodeEditorProps) {
   const dark = usePrefersDark();
   const exts = useMemo(() => {
     const list: Extension[] = [baseTheme, ...LANGS[language](), ...extensions];
@@ -71,8 +73,21 @@ export function CodeEditor({ value, onChange, language = "text", readOnly, singl
       if (onEnter) list.push(Prec.highest(keymap.of([{ key: "Enter", run: () => (onEnter(), true) }])));
     }
     if (lineWrapping || singleLine) list.push(EditorView.lineWrapping);
+    if (onPaste)
+      list.push(
+        Prec.highest(
+          EditorView.domEventHandlers({
+            paste: (e) => {
+              const text = e.clipboardData?.getData("text/plain") ?? "";
+              if (!onPaste(text)) return false;
+              e.preventDefault();
+              return true;
+            },
+          }),
+        ),
+      );
     return list;
-  }, [language, singleLine, onEnter, extensions, lineWrapping]);
+  }, [language, singleLine, onEnter, extensions, lineWrapping, onPaste]);
 
   return (
     <CodeMirror

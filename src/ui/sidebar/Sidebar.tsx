@@ -4,6 +4,7 @@ import { newUntitledRequest, openCollectionFromDialog } from "../actions";
 import { IconButton } from "../common/Button";
 import { Icon } from "../common/icons";
 import { CollectionTree } from "./CollectionTree";
+import { openCurlImport } from "../curl/CurlDialogs";
 
 type Section = "collections" | "history";
 
@@ -30,6 +31,9 @@ export function Sidebar() {
           <>
             <IconButton title="New request" onClick={() => newUntitledRequest()}>
               <Icon name="plus" />
+            </IconButton>
+            <IconButton title="Import cURL" onClick={() => openCurlImport()}>
+              <Icon name="import" />
             </IconButton>
             <IconButton title="Open collection folder" onClick={() => openCollectionFromDialog()}>
               <Icon name="folder" />
