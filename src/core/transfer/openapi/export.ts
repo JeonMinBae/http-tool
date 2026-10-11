@@ -1,6 +1,7 @@
 import lodash from "lodash";
 import { stringify } from "yaml";
-import type { Auth, CollectionDoc, HttpRequestDoc, KeyValue } from "../../model";
+import type { Auth, CollectionDoc, FolderDoc, HttpRequestDoc, KeyValue } from "../../model";
+import { RAW_CONTENT_TYPE } from "../../prepare";
 import type { Obj } from "../../yaml";
 import type { TransferNode } from "../model";
 
@@ -8,7 +9,11 @@ export interface OpenApiExportInput {
   title: string;
   collection: CollectionDoc;
   items: TransferNode[];
+  /** Folders enclosing the exported folder/request, outermost first; their auth and name still apply. */
+  ancestors?: FolderDoc[];
 }
+
+const scopesOf = (a: Auth): string[] => (a.type === "oauth2" ? a.scope.split(/\s+/).filter(Boolean) : []);
 
 export function inferSchema(v: unknown): Obj {
   if (v === null) return { nullable: true };
@@ -90,12 +95,16 @@ export function toOpenApi(input: OpenApiExportInput): { spec: Obj; warnings: str
       if (serverUrl && serverUrl !== servers[0]) op.servers = [serverObject(serverUrl, serverVars.get(serverUrl) ?? [])];
       if (!lodash.isEqual(effective, input.collection.auth)) {
         const s = effective.type === "none" ? null : schemeFor(effective);
-        op.security = s ? [{ [s]: effective.type === "oauth2" ? effective.scope.split(/\s+/).filter(Boolean) : [] }] : [];
+        op.security = s ? [{ [s]: scopesOf(effective) }] : [];
       }
       (paths[oaPath] ??= {})[method] = op;
     }
   };
-  walk(input.items, null, input.collection.auth);
+  const colScripts = input.collection.scripts;
+  if (colScripts.pre || colScripts.post) warnings.push(`Collection "${input.collection.name}": scripts are not exported.`);
+  const ancestors = input.ancestors ?? [];
+  const inheritedAuth = [...ancestors].reverse().find((f) => f.auth.type !== "inherit")?.auth ?? input.collection.auth;
+  walk(input.items, ancestors.at(-1)?.name ?? null, inheritedAuth);
 
   const colAuth = input.collection.auth;
   const globalScheme = colAuth.type === "none" || colAuth.type === "inherit" ? null : schemeFor(colAuth);
@@ -108,7 +117,7 @@ export function toOpenApi(input: OpenApiExportInput): { spec: Obj; warnings: str
       components: { securitySchemes: Object.fromEntries([...schemes.values()].map((s) => [s.name, s.def])) },
     }),
     ...(globalScheme && {
-      security: [{ [globalScheme]: colAuth.type === "oauth2" ? colAuth.scope.split(/\s+/).filter(Boolean) : [] }],
+      security: [{ [globalScheme]: scopesOf(colAuth) }],
     }),
   };
   return { spec, warnings };
@@ -128,7 +137,7 @@ function schemeDef(a: Auth): Obj | null {
     case "apikey":
       return { type: "apiKey", in: a.in, name: a.key };
     case "oauth2": {
-      const scopes = Object.fromEntries(a.scope.split(/\s+/).filter(Boolean).map((s) => [s, ""]));
+      const scopes = Object.fromEntries(scopesOf(a).map((s) => [s, ""]));
       return a.grant === "client_credentials"
         ? { type: "oauth2", flows: { clientCredentials: { tokenUrl: a.tokenUrl, scopes } } }
         : { type: "oauth2", flows: { authorizationCode: { authorizationUrl: a.authUrl, tokenUrl: a.tokenUrl, scopes } } };
@@ -175,28 +184,32 @@ function requestBodyFor(n: HttpRequestDoc, warnings: string[]): Obj | null {
       if (b.language === "json") {
         try {
           const v: unknown = JSON.parse(b.content);
-          return media(ct ?? "application/json", { schema: inferSchema(v), example: v });
+          return media(ct ?? RAW_CONTENT_TYPE.json, { schema: inferSchema(v), example: v });
         } catch {
           warnings.push(`"${n.name}": body is not valid JSON; exported as a string example.`);
-          return media(ct ?? "application/json", { example: b.content });
+          return media(ct ?? RAW_CONTENT_TYPE.json, { example: b.content });
         }
       }
-      const type = ct ?? { text: "text/plain", xml: "application/xml", html: "text/html" }[b.language];
-      return media(type, { schema: { type: "string" }, example: b.content });
+      return media(ct ?? RAW_CONTENT_TYPE[b.language], { schema: { type: "string" }, example: b.content });
     }
     case "urlencoded":
       return media("application/x-www-form-urlencoded", {
         schema: { type: "object", properties: Object.fromEntries(b.fields.map((f) => [f.key, { type: "string" }])) },
         example: Object.fromEntries(b.fields.map((f) => [f.key, f.value])),
       });
-    case "form-data":
+    case "form-data": {
+      if (b.fields.some((f) => f.kind === "file" && f.value)) warnings.push(`"${n.name}": form-data file paths are not exported.`);
+      const texts = b.fields.filter((f) => f.kind === "text");
       return media("multipart/form-data", {
         schema: {
           type: "object",
           properties: Object.fromEntries(b.fields.map((f) => [f.key, f.kind === "file" ? { type: "string", format: "binary" } : { type: "string" }])),
         },
+        ...(texts.length > 0 && { example: Object.fromEntries(texts.map((f) => [f.key, f.value])) }),
       });
+    }
     case "binary":
+      if (b.filePath) warnings.push(`"${n.name}": binary body file path is not exported.`);
       return media(ct ?? "application/octet-stream", { schema: { type: "string", format: "binary" } });
     case "graphql": {
       let variables: unknown = {};

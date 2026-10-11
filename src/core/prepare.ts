@@ -16,13 +16,11 @@ export interface PreparedResult {
   unresolved: string[];
 }
 
-/** Collection → folders → request chain for a request at `requestPath` (null for unsaved requests). */
-export function buildChain(col: LoadedCollection | undefined, requestPath: string | null, request: HttpRequestDoc): Chain {
-  const collection = col?.doc ?? emptyCollection("Untitled");
-  if (!col || !requestPath) return { collection, folders: [], request };
+/** Folders enclosing the node at `path`, outermost first ([] when it sits at the root or is not found). */
+export function ancestorFolders(col: LoadedCollection, path: string): FolderDoc[] {
   const find = (nodes: TreeNode[], trail: FolderDoc[]): FolderDoc[] | null => {
     for (const n of nodes) {
-      if (n.type === "request" && samePath(n.path, requestPath)) return trail;
+      if (samePath(n.path, path)) return trail;
       if (n.type === "folder") {
         const found = find(n.children, [...trail, n.doc]);
         if (found) return found;
@@ -30,7 +28,14 @@ export function buildChain(col: LoadedCollection | undefined, requestPath: strin
     }
     return null;
   };
-  return { collection, folders: find(col.children, []) ?? [], request };
+  return find(col.children, []) ?? [];
+}
+
+/** Collection → folders → request chain for a request at `requestPath` (null for unsaved requests). */
+export function buildChain(col: LoadedCollection | undefined, requestPath: string | null, request: HttpRequestDoc): Chain {
+  const collection = col?.doc ?? emptyCollection("Untitled");
+  if (!col || !requestPath) return { collection, folders: [], request };
+  return { collection, folders: ancestorFolders(col, requestPath), request };
 }
 
 const enabled = <T extends KeyValue>(items: T[]) => items.filter((i) => i.enabled && i.key.trim() !== "");

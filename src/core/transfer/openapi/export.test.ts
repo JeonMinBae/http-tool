@@ -88,4 +88,33 @@ describe("toOpenApi", () => {
     const { spec } = toOpenApi({ title: "API", collection, items: [get] });
     expect(serializeOpenApi(spec, "yaml")).toMatch(/^openapi: 3\.0\.3/);
   });
+
+  it("partial export applies ancestor folder auth and tag", () => {
+    const users = { ...emptyFolder("Users"), auth: { type: "apikey", key: "X-Key", value: "", in: "header" } as const };
+    const { spec } = toOpenApi({ title: "x", collection: { ...collection, auth: { type: "none" } }, items: [get], ancestors: [emptyFolder("Api"), users] });
+    const op = (spec.paths as Record<string, Record<string, Obj>>)["/users/{id}"].get;
+    expect(op.tags).toEqual(["Users"]);
+    expect(op.security).toEqual([{ apiKeyAuth: [] }]);
+  });
+
+  it("warns about collection scripts and dropped file paths, keeps form-data text examples", () => {
+    const upload: HttpRequestDoc = {
+      ...emptyRequest("Upload"),
+      method: "POST",
+      url: "{{baseUrl}}/files",
+      body: {
+        type: "form-data",
+        fields: [
+          { key: "file", value: "/tmp/a.png", enabled: true, kind: "file" },
+          { key: "note", value: "hi", enabled: true, kind: "text" },
+        ],
+      },
+    };
+    const { spec, warnings } = toOpenApi({ title: "x", collection: { ...collection, scripts: { pre: "x", post: "" } }, items: [upload] });
+    const body = (spec.paths as Record<string, Record<string, Obj>>)["/files"].post.requestBody as Obj;
+    expect(body).toMatchObject({ content: { "multipart/form-data": { example: { note: "hi" } } } });
+    const all = warnings.join("\n");
+    expect(all).toMatch(/Collection "API": scripts/);
+    expect(all).toMatch(/file paths are not exported/);
+  });
 });

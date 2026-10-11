@@ -4,6 +4,7 @@ import { fromTree } from "../../core/transfer/model";
 import { toNative, type NativeScope } from "../../core/transfer/native";
 import { unredactedCredentialWarnings } from "../../core/transfer/redact";
 import { serializeOpenApi, toOpenApi } from "../../core/transfer/openapi/export";
+import { ancestorFolders } from "../../core/prepare";
 import { exportToFile } from "../actions";
 import { Button } from "../common/Button";
 import { Modal, openDialog } from "../common/dialogs";
@@ -22,8 +23,11 @@ function ExportBody({ col, node, close }: { col: LoadedCollection; node?: TreeNo
   const name = node ? node.doc.name : col.doc.name;
   const items = useMemo(() => fromTree(node ? [node] : col.children), [col, node]);
   const openapi = useMemo(
-    () => (format === "openapi" ? toOpenApi({ title: name, collection: col.doc, items }) : null),
-    [format, name, col.doc, items],
+    () =>
+      format === "openapi"
+        ? toOpenApi({ title: name, collection: col.doc, items, ancestors: node ? ancestorFolders(col, node.path) : [] })
+        : null,
+    [format, name, col, node, items],
   );
   const plainCredentials = useMemo(
     () => (format === "native" && !includeSecrets ? unredactedCredentialWarnings(items) : []),
