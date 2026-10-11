@@ -1,3 +1,6 @@
+import { IconButton } from "./common/Button";
+import { Icon } from "./common/icons";
+import { openCookieManager } from "./cookies/CookieManager";
 import { EnvironmentSelect } from "./vars/EnvironmentSelect";
 
 export function TopBar() {
@@ -6,6 +9,9 @@ export function TopBar() {
       <span className="font-semibold">HTTP Tool</span>
       <div className="flex-1" />
       <EnvironmentSelect />
+      <IconButton title="Cookies" onClick={() => openCookieManager()}>
+        <Icon name="cookie" />
+      </IconButton>
     </div>
   );
 }
