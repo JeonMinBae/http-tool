@@ -22,6 +22,7 @@ describe("redact", () => {
       { key: "b", value: "2", enabled: true, secret: true },
     ]);
     expect(vars.map((v) => v.value)).toEqual(["1", ""]);
+    expect(redactVariables([{ key: "c", value: "{{envToken}}", enabled: true, secret: true }])[0].value).toBe("{{envToken}}");
   });
 
   it("warns about literal credentials outside the Auth tab", () => {

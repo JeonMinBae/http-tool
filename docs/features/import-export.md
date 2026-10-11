@@ -48,7 +48,7 @@ cURL 변환은 별도 기능이다 → [cURL 변환](curl.md).
 | OpenAPI | 요청 |
 | --- | --- |
 | `info.title` | 컬렉션 이름 |
-| `servers[0].url` (서버 변수는 기본값으로) | 컬렉션 변수 `baseUrl` |
+| `servers[0].url` (서버 변수는 기본값으로) | 컬렉션 변수 `baseUrl`. 상대 경로(`/api/v3`)면 전체 주소로 고치라고 경고 |
 | 경로 `/users/{id}` | URL `{{baseUrl}}/users/{{id}}`, `id`는 컬렉션 변수 (example 값) |
 | operation의 첫 번째 tag | 폴더 (tag 없으면 컬렉션 바로 아래) |
 | `summary` → `operationId` → `METHOD 경로` | 요청 이름 |

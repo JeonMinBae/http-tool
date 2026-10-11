@@ -74,12 +74,15 @@ function serverUrl(spec: Obj, warnings: string[]): string {
     return "";
   }
   const defs = isObj(first.variables) ? first.variables : {};
-  return str(first.url)
+  const url = str(first.url)
     .replace(/\{([^}]+)\}/g, (_, n: string) => {
       const def = defs[n];
       return isObj(def) ? str(def.default) : "";
     })
     .replace(/\/$/, "");
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(url))
+    warnings.push(`Server URL "${url || "/"}" is relative; set the baseUrl collection variable to the full address (e.g. https://host${url}).`);
+  return url;
 }
 
 function buildRequest(path: string, method: string, op: Obj, pathParams: unknown[], ctx: Ctx): HttpRequestDoc {

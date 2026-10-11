@@ -20,7 +20,7 @@ export function redactAuth(a: Auth): Auth {
   }
 }
 
-export const redactVariables = (vars: Variable[]): Variable[] => vars.map((v) => (v.secret ? { ...v, value: "" } : v));
+export const redactVariables = (vars: Variable[]): Variable[] => vars.map((v) => (v.secret ? { ...v, value: blank(v.value) } : v));
 
 export function redactNodes(items: TransferNode[]): TransferNode[] {
   return items.map((n) => {

@@ -134,4 +134,10 @@ describe("importOpenApi", () => {
     });
     expect((plan.items[0] as HttpRequestDoc).headers).toEqual([{ key: "Content-Type", value: "application/vnd.api+json", enabled: true }]);
   });
+
+  it("warns when the server url is relative", () => {
+    const plan = importOpenApi({ openapi: "3.0.0", info: {}, servers: [{ url: "/api/v3" }], paths: {} });
+    expect(plan.collection.variables[0]).toMatchObject({ key: "baseUrl", value: "/api/v3" });
+    expect(plan.warnings.join("\n")).toMatch(/relative/);
+  });
 });
