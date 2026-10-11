@@ -1,0 +1,211 @@
+import { open as openDialogPicker } from "@tauri-apps/plugin-dialog";
+import type { TreeNode } from "../core/collectionRepo";
+import { emptyRequest, emptyWebSocket, type HttpRequestDoc } from "../core/model";
+import { samePath } from "../core/path";
+import { useStreams } from "../state/streams";
+import { useExpanded } from "../state/treeExpand";
+import { useWebSockets } from "../state/websockets";
+import { isDirty, useTabs } from "../state/tabs";
+import { collectionRepo, useWorkspace } from "../state/workspace";
+import { alertError, askChoice, askText, confirmDanger } from "./common/dialogs";
+import { pickSaveLocation } from "./tabs/SaveAsDialog";
+
+const ws = () => useWorkspace.getState();
+const tabs = () => useTabs.getState();
+
+async function guard<T>(title: string, fn: () => Promise<T>): Promise<T | undefined> {
+  try {
+    return await fn();
+  } catch (e) {
+    await alertError(title, e);
+    return undefined;
+  }
+}
+
+export async function openCollectionFromDialog() {
+  const picked = await openDialogPicker({ directory: true, multiple: false, title: "Open collection folder" });
+  if (typeof picked !== "string") return;
+  await guard("Could not open collection", async () => {
+    const col = await ws().openCollection(picked);
+    if (!col.hasCollectionFile) await ws().saveCollectionDoc(col.root, col.doc);
+    useExpanded.getState().expand(col.root);
+    await ws().reload(col.root);
+  });
+}
+
+export async function closeCollection(root: string) {
+  const open = tabs().tabs.filter((t) => t.root && samePath(t.root, root));
+  if (open.some(isDirty)) {
+    const choice = await askChoice("Close collection", "Some tabs in this collection have unsaved changes. Close them anyway?", [
+      { id: "cancel", label: "Cancel" },
+      { id: "close", label: "Close", variant: "danger" },
+    ]);
+    if (choice !== "close") return;
+  }
+  open.forEach((t) => tabs().close(t.id));
+  await ws().closeCollection(root);
+}
+
+export function openNode(root: string, node: TreeNode) {
+  tabs().open(root, node.path, node.doc);
+}
+
+export function openRunner(root: string, path: string, name: string) {
+  tabs().open(root, path, { kind: "runner", name: `Run: ${name}` });
+}
+
+export function openCollectionSettings(root: string) {
+  const col = ws().collections.find((c) => samePath(c.root, root));
+  if (col) tabs().open(col.root, col.root, col.doc);
+}
+
+export async function newRequest(root: string, dir: string) {
+  const name = await askText("New request", "Name", "New Request");
+  if (!name) return;
+  await guard("Could not create request", async () => {
+    const path = await collectionRepo.createRequest(dir, emptyRequest(name));
+    useExpanded.getState().expand(root, dir);
+    await ws().reload(root);
+    tabs().open(root, path, await collectionRepo.readRequest(path));
+  });
+}
+
+export async function newWebSocket(root: string, dir: string) {
+  const name = await askText("New WebSocket", "Name", "New WebSocket");
+  if (!name) return;
+  await guard("Could not create WebSocket", async () => {
+    const path = await collectionRepo.createRequest(dir, emptyWebSocket(name));
+    useExpanded.getState().expand(root, dir);
+    await ws().reload(root);
+    tabs().open(root, path, await collectionRepo.readRequest(path));
+  });
+}
+
+export async function newFolder(root: string, parent: string) {
+  const name = await askText("New folder", "Name", "New Folder");
+  if (!name) return;
+  await guard("Could not create folder", async () => {
+    await collectionRepo.createFolder(parent, name);
+    useExpanded.getState().expand(root, parent);
+    await ws().reload(root);
+  });
+}
+
+export async function renameNode(root: string, node: TreeNode) {
+  const name = await askText(`Rename ${node.type}`, "Name", node.doc.name);
+  if (!name || name === node.doc.name) return;
+  await guard("Could not rename", async () => {
+    const next =
+      node.type === "request" ? await collectionRepo.renameRequest(node.path, name) : await collectionRepo.renameFolder(node.path, name);
+    tabs().renamePath(node.path, next);
+    await ws().reload(root);
+    syncTabsWithTree(root);
+  });
+}
+
+export async function duplicateNode(root: string, node: TreeNode) {
+  await guard("Could not duplicate", async () => {
+    await collectionRepo.duplicate(node.path);
+    await ws().reload(root);
+  });
+}
+
+export async function deleteNode(root: string, node: TreeNode) {
+  const what = node.type === "folder" ? `folder "${node.doc.name}" and everything in it` : `request "${node.doc.name}"`;
+  if (!(await confirmDanger("Delete", `Delete ${what}? This removes the files from disk.`))) return;
+  await guard("Could not delete", async () => {
+    await collectionRepo.remove(node.path);
+    tabs().removePath(node.path);
+    await ws().reload(root);
+  });
+}
+
+/**
+ * Moves `path` into `targetDir` (appended at the end). `siblingsAfterMove` may return the desired
+ * sibling order, given the moved node's new path, to place it elsewhere.
+ */
+export async function moveNode(root: string, path: string, targetDir: string, siblingsAfterMove?: (moved: string) => string[]) {
+  await guard("Could not move", async () => {
+    const moved = await collectionRepo.move(path, targetDir);
+    if (!samePath(moved, path)) tabs().renamePath(path, moved);
+    if (siblingsAfterMove) await collectionRepo.reorder(siblingsAfterMove(moved));
+    await ws().reload(root);
+    syncTabsWithTree(root);
+  });
+}
+
+/** After tree changes, refresh saved snapshots of open tabs (names, seq). */
+function syncTabsWithTree(root: string) {
+  const col = ws().collections.find((c) => samePath(c.root, root));
+  if (!col) return;
+  const walk = (nodes: TreeNode[]) => {
+    for (const n of nodes) {
+      tabs().refreshSaved(n.path, n.doc);
+      if (n.type === "folder") walk(n.children);
+    }
+  };
+  walk(col.children);
+}
+
+export function newUntitledRequest(doc?: HttpRequestDoc) {
+  tabs().open(null, null, doc ?? emptyRequest("Untitled Request"));
+}
+
+export async function saveTab(id: string): Promise<boolean> {
+  const tab = tabs().tabs.find((t) => t.id === id);
+  if (!tab) return false;
+  const result = await guard("Could not save", async () => {
+    const doc = tab.draft;
+    if (doc.kind === "runner") return true;
+    if (doc.kind === "collection") {
+      await ws().saveCollectionDoc(tab.root!, doc);
+      tabs().markSaved(id, tab.root!, tab.path!);
+      return true;
+    }
+    if (doc.kind === "folder") {
+      await collectionRepo.saveFolder(tab.path!, doc);
+      tabs().markSaved(id, tab.root!, tab.path!);
+      await ws().reload(tab.root!);
+      return true;
+    }
+    if (tab.path && tab.root) {
+      await collectionRepo.saveRequest(tab.path, doc);
+      tabs().markSaved(id, tab.root, tab.path);
+      await ws().reload(tab.root);
+      return true;
+    }
+    const target = await pickSaveLocation(doc.name);
+    if (!target) return false;
+    const path = await collectionRepo.createRequest(target.dir, { ...doc, name: target.name });
+    useExpanded.getState().expand(target.root, target.dir);
+    const saved = await collectionRepo.readRequest(path);
+    tabs().markSaved(id, target.root, path, saved);
+    await ws().reload(target.root);
+    return true;
+  });
+  return result ?? false;
+}
+
+export async function saveActiveTab() {
+  const id = tabs().activeId;
+  if (id) await saveTab(id);
+}
+
+/** Closes a tab, asking to save when it has unsaved changes. */
+export async function closeTab(id: string) {
+  const tab = tabs().tabs.find((t) => t.id === id);
+  if (!tab) return;
+  if (isDirty(tab)) {
+    const choice = await askChoice("Unsaved changes", `Save changes to "${tab.draft.name}" before closing?`, [
+      { id: "cancel", label: "Cancel" },
+      { id: "discard", label: "Don't Save" },
+      { id: "save", label: "Save", variant: "primary" },
+    ]);
+    if (choice === "cancel") return;
+    if (choice === "save" && !(await saveTab(id))) return;
+  }
+  await useStreams.getState().stop(id);
+  await useWebSockets.getState().disconnect(id);
+  useStreams.getState().clear(id);
+  tabs().close(id);
+}
