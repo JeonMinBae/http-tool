@@ -157,3 +157,15 @@ describe("CollectionRepo mutations", () => {
     expect(parseRequest(fs.files.get("/c/users/b.yaml")!).seq).toBe(1);
   });
 });
+
+describe("websocket files", () => {
+  it("loads websocket documents as websocket nodes and renames them", async () => {
+    const { serializeWebSocket } = await import("./yaml");
+    const { emptyWebSocket } = await import("./model");
+    fs.files.set("/c/chat.yaml", serializeWebSocket({ ...emptyWebSocket("Chat", 9), url: "ws://x" }));
+    const col = await repo.load(ROOT);
+    expect(col.children.find((c) => c.doc.name === "Chat")?.type).toBe("websocket");
+    const path = await repo.renameRequest("/c/chat.yaml", "Chat 2");
+    expect((await repo.readRequest(path)).kind).toBe("websocket");
+  });
+});

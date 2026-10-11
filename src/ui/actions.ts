@@ -1,9 +1,10 @@
 import { open as openDialogPicker } from "@tauri-apps/plugin-dialog";
 import type { TreeNode } from "../core/collectionRepo";
-import { emptyRequest, type HttpRequestDoc } from "../core/model";
+import { emptyRequest, emptyWebSocket, type HttpRequestDoc } from "../core/model";
 import { samePath } from "../core/path";
 import { useStreams } from "../state/streams";
 import { useExpanded } from "../state/treeExpand";
+import { useWebSockets } from "../state/websockets";
 import { isDirty, useTabs } from "../state/tabs";
 import { collectionRepo, useWorkspace } from "../state/workspace";
 import { alertError, askChoice, askText, confirmDanger } from "./common/dialogs";
@@ -63,6 +64,17 @@ export async function newRequest(root: string, dir: string) {
   if (!name) return;
   await guard("Could not create request", async () => {
     const path = await collectionRepo.createRequest(dir, emptyRequest(name));
+    useExpanded.getState().expand(root, dir);
+    await ws().reload(root);
+    tabs().open(root, path, await collectionRepo.readRequest(path));
+  });
+}
+
+export async function newWebSocket(root: string, dir: string) {
+  const name = await askText("New WebSocket", "Name", "New WebSocket");
+  if (!name) return;
+  await guard("Could not create WebSocket", async () => {
+    const path = await collectionRepo.createRequest(dir, emptyWebSocket(name));
     useExpanded.getState().expand(root, dir);
     await ws().reload(root);
     tabs().open(root, path, await collectionRepo.readRequest(path));
@@ -193,6 +205,7 @@ export async function closeTab(id: string) {
     if (choice === "save" && !(await saveTab(id))) return;
   }
   await useStreams.getState().stop(id);
+  await useWebSockets.getState().disconnect(id);
   useStreams.getState().clear(id);
   tabs().close(id);
 }

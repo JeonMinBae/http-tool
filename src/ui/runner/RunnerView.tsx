@@ -17,7 +17,11 @@ interface Row extends RunItem {
 
 function collect(nodes: TreeNode[], prefix: string[]): Row[] {
   return nodes.flatMap((n) =>
-    n.type === "folder" ? collect(n.children, [...prefix, n.doc.name]) : [{ path: n.path, name: [...prefix, n.doc.name].join(" / "), doc: n.doc, enabled: true }],
+    n.type === "folder"
+      ? collect(n.children, [...prefix, n.doc.name])
+      : n.type === "request"
+        ? [{ path: n.path, name: [...prefix, n.doc.name].join(" / "), doc: n.doc, enabled: true }]
+        : [],
   );
 }
 

@@ -174,3 +174,26 @@ export const oauthApi = {
   listen: (redirectUri: string) => invoke<{ redirectUri: string; port: number }>("oauth_listen", { redirectUri }),
   wait: (port: number) => invoke<string>("oauth_wait", { port }),
 };
+
+export type WsEvent =
+  | { type: "open"; protocol: string | null }
+  | { type: "message"; direction: "in" | "out"; binary: boolean; data: string; atMs: number }
+  | { type: "close"; code: number | null; reason: string }
+  | { type: "error"; message: string };
+
+export interface WsConnectParams {
+  url: string;
+  headers: [string, string][];
+  subprotocols: string[];
+  verifySsl: boolean;
+}
+
+export const wsApi = {
+  connect(id: string, params: WsConnectParams, onMessage: (e: WsEvent) => void) {
+    const onEvent = new Channel<WsEvent>();
+    onEvent.onmessage = onMessage;
+    return invoke<void>("ws_connect", { id, params, onEvent });
+  },
+  send: (id: string, binary: boolean, data: string) => invoke<void>("ws_send", { id, binary, data }),
+  close: (id: string) => invoke<void>("ws_close", { id }),
+};

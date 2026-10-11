@@ -7,18 +7,22 @@ mod history;
 mod http;
 mod oauth;
 mod state;
+mod ws;
 
 use state::AppState;
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // wss:// connections build their TLS config from the process-wide provider.
+    let _ = rustls::crypto::ring::default_provider().install_default();
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState::default())
         .manage(oauth::OAuthListeners::default())
         .manage(http::stream::StreamRegistry::default())
+        .manage(ws::WsRegistry::default())
         .setup(|app| {
             let dir = appdata::data_dir(app.handle())?;
             app.manage(cookies::CookieJar::load(dir.join("cookies.json")));
@@ -39,6 +43,9 @@ pub fn run() {
             history::history_clear,
             oauth::oauth_listen,
             oauth::oauth_wait,
+            ws::ws_connect,
+            ws::ws_send,
+            ws::ws_close,
             files::file_save_base64,
             fs_commands::collection_register,
             fs_commands::collection_unregister,

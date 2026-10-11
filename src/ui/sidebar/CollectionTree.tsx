@@ -10,6 +10,7 @@ import {
   moveNode,
   newFolder,
   newRequest,
+  newWebSocket,
   openCollectionSettings,
   openNode,
   openRunner,
@@ -31,6 +32,7 @@ function nodeMenu(root: string, node: TreeNode): MenuEntry[] {
   if (node.type === "folder") {
     items.push(
       { label: "New Request", onSelect: () => newRequest(root, node.path) },
+      { label: "New WebSocket", onSelect: () => newWebSocket(root, node.path) },
       { label: "New Folder", onSelect: () => newFolder(root, node.path) },
       { label: "Folder Settings", onSelect: () => openNode(root, node) },
       { label: "Run Folder", onSelect: () => openRunner(root, node.path, node.doc.name) },
@@ -131,6 +133,8 @@ function Row({ col, node, depth }: { col: LoadedCollection; node: TreeNode; dept
             <Icon name={isOpen ? "chevronDown" : "chevronRight"} size={12} className="shrink-0 text-muted" />
             <Icon name="folder" size={14} className="shrink-0 text-muted" />
           </>
+        ) : node.type === "websocket" ? (
+          <span className="mono w-9 shrink-0 text-right text-[10px] font-bold text-[#0d9488] dark:text-[#2dd4bf]">WS</span>
         ) : (
           <span className={`mono w-9 shrink-0 text-right text-[10px] font-bold ${methodColor(node.doc.method)}`}>{methodLabel(node.doc.method)}</span>
         )}
@@ -161,6 +165,7 @@ export function CollectionTree({ col }: { col: LoadedCollection }) {
 
   const menu: MenuEntry[] = [
     { label: "New Request", onSelect: () => newRequest(col.root, col.root) },
+    { label: "New WebSocket", onSelect: () => newWebSocket(col.root, col.root) },
     { label: "New Folder", onSelect: () => newFolder(col.root, col.root) },
     { label: "Collection Settings", onSelect: () => openCollectionSettings(col.root) },
     { label: "Run Collection", onSelect: () => openRunner(col.root, col.root, col.doc.name) },

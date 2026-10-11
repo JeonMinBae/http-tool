@@ -13,6 +13,7 @@ import {
   type RequestSettings,
   type Scripts,
   type Variable,
+  type WebSocketDoc,
 } from "./model";
 
 type Obj = Record<string, unknown>;
@@ -160,7 +161,31 @@ export function parseCollection(text: string): CollectionDoc {
   };
 }
 
+export function parseWebSocket(text: string): WebSocketDoc {
+  const o = load(text, "websocket");
+  return {
+    kind: "websocket",
+    name: str(o.name, "WebSocket"),
+    seq: num(o.seq, 0),
+    url: str(o.url),
+    headers: arr(o.headers).map(keyValue),
+    subprotocols: arr(o.subprotocols).map((p) => str(p)).filter(Boolean),
+    savedMessages: arr(o.savedMessages).map((m) => {
+      const x = isObj(m) ? m : {};
+      return { name: str(x.name, "Message"), type: x.type === "binary" ? ("binary" as const) : ("text" as const), content: str(x.content) };
+    }),
+  };
+}
+
+/** Kind of a request file without fully parsing it. */
+export function fileKind(text: string): string | undefined {
+  const data: unknown = parse(text);
+  return isObj(data) && typeof data.kind === "string" ? data.kind : undefined;
+}
+
 export const serializeRequest = (doc: HttpRequestDoc): string => stringify(doc, STRINGIFY_OPTIONS);
+
+export const serializeWebSocket = (doc: WebSocketDoc): string => stringify(doc, STRINGIFY_OPTIONS);
 
 export const serializeFolder = (doc: FolderDoc): string => stringify(doc, STRINGIFY_OPTIONS);
 

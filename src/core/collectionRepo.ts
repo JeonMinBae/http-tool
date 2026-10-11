@@ -1,18 +1,28 @@
 import type { FsApi, FsEntry } from "../ipc";
-import { emptyCollection, emptyFolder, type CollectionDoc, type FolderDoc, type HttpRequestDoc } from "./model";
+import { emptyCollection, emptyFolder, type CollectionDoc, type FolderDoc, type HttpRequestDoc, type WebSocketDoc } from "./model";
 import { baseName, dirName, isInside, joinPath, samePath } from "./path";
 import {
   parseCollection,
   parseFolder,
+  fileKind,
   parseRequest,
+  parseWebSocket,
   serializeCollection,
   serializeFolder,
   serializeRequest,
+  serializeWebSocket,
 } from "./yaml";
 
 export type TreeNode =
   | { type: "folder"; path: string; doc: FolderDoc; children: TreeNode[] }
-  | { type: "request"; path: string; doc: HttpRequestDoc };
+  | { type: "request"; path: string; doc: HttpRequestDoc }
+  | { type: "websocket"; path: string; doc: WebSocketDoc };
+
+/** Documents stored one per file. */
+export type FileDoc = HttpRequestDoc | WebSocketDoc;
+
+export const parseFileDoc = (text: string): FileDoc => (fileKind(text) === "websocket" ? parseWebSocket(text) : parseRequest(text));
+const serializeFileDoc = (doc: FileDoc) => (doc.kind === "websocket" ? serializeWebSocket(doc) : serializeRequest(doc));
 
 export interface LoadError {
   path: string;
@@ -92,7 +102,8 @@ export class CollectionRepo {
           const doc = folderFile?.content != null ? parseFolder(folderFile.content) : emptyFolder(entry.name);
           nodes.push({ type: "folder", path: entry.path, doc, children: this.convert(entry, errors) });
         } else if (!RESERVED.has(entry.name) && entry.content != null) {
-          nodes.push({ type: "request", path: entry.path, doc: parseRequest(entry.content) });
+          const doc = parseFileDoc(entry.content);
+          nodes.push(doc.kind === "websocket" ? { type: "websocket", path: entry.path, doc } : { type: "request", path: entry.path, doc });
         }
       } catch (e) {
         errors.push({ path: entry.path, message: e instanceof Error ? e.message : String(e) });
@@ -115,8 +126,8 @@ export class CollectionRepo {
     return seqs.length ? Math.max(...seqs) + 1 : 0;
   }
 
-  saveRequest(path: string, doc: HttpRequestDoc): Promise<void> {
-    return this.fs.writeFile(path, serializeRequest(doc));
+  saveRequest(path: string, doc: FileDoc): Promise<void> {
+    return this.fs.writeFile(path, serializeFileDoc(doc));
   }
 
   saveFolder(dir: string, doc: FolderDoc): Promise<void> {
@@ -127,8 +138,8 @@ export class CollectionRepo {
     return this.fs.writeFile(joinPath(root, COLLECTION_FILE), serializeCollection(doc));
   }
 
-  async readRequest(path: string): Promise<HttpRequestDoc> {
-    return parseRequest(await this.fs.readFile(path));
+  async readRequest(path: string): Promise<FileDoc> {
+    return parseFileDoc(await this.fs.readFile(path));
   }
 
   private async readFolder(dir: string): Promise<FolderDoc> {
@@ -140,7 +151,7 @@ export class CollectionRepo {
   }
 
   /** Creates a new request file in `dir`; returns its path. */
-  async createRequest(dir: string, doc: HttpRequestDoc): Promise<string> {
+  async createRequest(dir: string, doc: FileDoc): Promise<string> {
     const path = joinPath(dir, toFileName(doc.name, await this.takenNames(dir)));
     await this.saveRequest(path, { ...doc, seq: await this.nextSeq(dir) });
     return path;

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { CollectionDoc, FolderDoc, HttpRequestDoc } from "../core/model";
+import type { CollectionDoc, FolderDoc, HttpRequestDoc, WebSocketDoc } from "../core/model";
 import { isInside, samePath } from "../core/path";
 
 /** Collection runner tab for a collection root or folder (`path`). */
@@ -8,7 +8,7 @@ export interface RunnerDoc {
   name: string;
 }
 
-export type TabDoc = HttpRequestDoc | FolderDoc | CollectionDoc | RunnerDoc;
+export type TabDoc = HttpRequestDoc | WebSocketDoc | FolderDoc | CollectionDoc | RunnerDoc;
 
 export interface Tab<D extends TabDoc = TabDoc> {
   id: string;

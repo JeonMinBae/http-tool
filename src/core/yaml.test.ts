@@ -98,3 +98,16 @@ describe("oauth2 auth yaml", () => {
     expect(parseRequest(serializeRequest(r))).toEqual(r);
   });
 });
+
+describe("websocket yaml", () => {
+  it("round-trips a websocket document", async () => {
+    const { parseWebSocket, serializeWebSocket, fileKind } = await import("./yaml");
+    const doc = {
+      kind: "websocket" as const, name: "Chat", seq: 2, url: "wss://x/ws", headers: [{ key: "A", value: "1", enabled: true }],
+      subprotocols: ["chat.v1"], savedMessages: [{ name: "hello", type: "text" as const, content: '{"t":"hi"}\n' }],
+    };
+    const text = serializeWebSocket(doc);
+    expect(fileKind(text)).toBe("websocket");
+    expect(parseWebSocket(text)).toEqual(doc);
+  });
+});

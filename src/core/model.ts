@@ -75,6 +75,27 @@ export interface HttpRequestDoc {
   settings: RequestSettings;
 }
 
+export interface SavedMessage {
+  name: string;
+  /** binary messages hold base64 content */
+  type: "text" | "binary";
+  content: string;
+}
+
+export interface WebSocketDoc {
+  kind: "websocket";
+  name: string;
+  seq: number;
+  url: string;
+  headers: KeyValue[];
+  subprotocols: string[];
+  savedMessages: SavedMessage[];
+}
+
+export function emptyWebSocket(name: string, seq = 0): WebSocketDoc {
+  return { kind: "websocket", name, seq, url: "", headers: [], subprotocols: [], savedMessages: [] };
+}
+
 export interface FolderDoc {
   kind: "folder";
   name: string;

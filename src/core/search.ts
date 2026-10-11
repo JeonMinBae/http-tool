@@ -38,7 +38,7 @@ export function buildIndex(input: { collections: LoadedCollection[]; globals: Va
     const walk = (nodes: TreeNode[], trail: string[]) => {
       for (const n of nodes) {
         if (n.type === "folder") walk(n.children, [...trail, n.doc.name]);
-        else {
+        else if (n.type === "request") {
           const detail = trail.join(" / ");
           entries.push({
             hit: { kind: "request", label: n.doc.name, detail, url: n.doc.url, method: n.doc.method, root: col.root, path: n.path },

@@ -1,4 +1,5 @@
-import type { CollectionDoc, FolderDoc, HttpRequestDoc } from "../../core/model";
+import type { CollectionDoc, FolderDoc, HttpRequestDoc, WebSocketDoc } from "../../core/model";
+import { WsEditor } from "../ws/WsEditor";
 import { ContainerSettings } from "../collection/ContainerSettings";
 import { RunnerView } from "../runner/RunnerView";
 import { useResponses } from "../../state/responses";
@@ -27,6 +28,7 @@ export function RequestPane() {
       </div>
     );
   }
+  if (tab.draft.kind === "websocket") return <WsEditor key={tab.id} tab={tab as Tab<WebSocketDoc>} />;
   if (tab.draft.kind === "runner") return <RunnerView key={tab.id} root={tab.root!} path={tab.path!} />;
   if (tab.draft.kind !== "http") return <ContainerSettings key={tab.id} tab={tab as Tab<CollectionDoc | FolderDoc>} />;
   const reqTab = tab as Tab<HttpRequestDoc>;
