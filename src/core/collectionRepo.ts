@@ -187,6 +187,11 @@ export class CollectionRepo {
     return next;
   }
 
+  /** Renames a tree node: folders rename their directory, file documents (HTTP and WebSocket) their `.yaml` file. */
+  rename(node: Pick<TreeNode, "type" | "path">, name: string): Promise<string> {
+    return node.type === "folder" ? this.renameFolder(node.path, name) : this.renameRequest(node.path, name);
+  }
+
   /** Moves a request file or folder into `targetDir`, appending it at the end. Returns the new path. */
   async move(path: string, targetDir: string): Promise<string> {
     if (samePath(path, targetDir) || isInside(targetDir, path)) throw new Error("cannot move a folder into itself");

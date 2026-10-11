@@ -95,8 +95,7 @@ export async function renameNode(root: string, node: TreeNode) {
   const name = await askText(`Rename ${node.type}`, "Name", node.doc.name);
   if (!name || name === node.doc.name) return;
   await guard("Could not rename", async () => {
-    const next =
-      node.type === "request" ? await collectionRepo.renameRequest(node.path, name) : await collectionRepo.renameFolder(node.path, name);
+    const next = await collectionRepo.rename(node, name);
     tabs().renamePath(node.path, next);
     await ws().reload(root);
     syncTabsWithTree(root);
