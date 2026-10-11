@@ -118,3 +118,7 @@ export const cookieApi = {
   remove: (domain: string, path: string, name: string) => invoke<void>("cookie_delete", { domain, path, name }),
   clear: (domain?: string) => invoke<void>("cookie_clear", { domain: domain ?? null }),
 };
+
+export const fileApi = {
+  saveBase64: (path: string, data: string) => invoke<void>("file_save_base64", { path, data }),
+};

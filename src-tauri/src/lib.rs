@@ -1,6 +1,7 @@
 mod appdata;
 mod cookies;
 mod error;
+mod files;
 mod fs_commands;
 mod http;
 mod state;
@@ -27,6 +28,7 @@ pub fn run() {
             cookies::cookie_delete,
             cookies::cookie_clear,
             http::client::http_send,
+            files::file_save_base64,
             fs_commands::collection_register,
             fs_commands::collection_unregister,
             fs_commands::fs_read_tree,
