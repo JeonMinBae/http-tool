@@ -66,7 +66,7 @@ export function RequestEditor({ tab }: { tab: Tab<HttpRequestDoc> }) {
         )}
         {section === "headers" && <KeyValueTable rows={d.headers} makeRow={kv} onChange={(headers) => patch({ headers })} />}
         {section === "body" && <BodyEditor body={d.body} extensions={varExt} onChange={(body) => patch({ body })} />}
-        {section === "auth" && <AuthEditor auth={d.auth} onChange={(auth) => patch({ auth })} />}
+        {section === "auth" && <AuthEditor auth={d.auth} root={tab.root} onChange={(auth) => patch({ auth })} />}
         {section === "cookies" && (
           <>
             <p className="mb-2 text-[12px] text-muted">

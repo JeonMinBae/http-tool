@@ -29,8 +29,11 @@ function appendQuery(url: string, key: string, value: string): string {
   return hash === undefined ? next : `${next}#${hash}`;
 }
 
-/** Applies auth to the request; headers the user set explicitly take precedence. */
-export function applyAuth(auth: Auth, target: AuthTarget, t: (v: string) => string): AuthTarget {
+/**
+ * Applies auth to the request; headers the user set explicitly take precedence.
+ * OAuth 2.0 needs the access token resolved beforehand (`oauthToken`).
+ */
+export function applyAuth(auth: Auth, target: AuthTarget, t: (v: string) => string, oauthToken?: string): AuthTarget {
   const headers = [...target.headers];
   const setHeader = (name: string, value: string) => {
     if (!hasHeader(headers, name)) headers.push([name, value]);
@@ -49,6 +52,9 @@ export function applyAuth(auth: Auth, target: AuthTarget, t: (v: string) => stri
       setHeader(key, t(auth.value));
       return { url: target.url, headers };
     }
+    case "oauth2":
+      if (oauthToken) setHeader("Authorization", `${auth.tokenPrefix || "Bearer"} ${oauthToken}`.trim());
+      return { url: target.url, headers };
     default:
       return target;
   }

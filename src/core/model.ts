@@ -26,7 +26,23 @@ export type Auth =
   | { type: "none" }
   | { type: "bearer"; token: string }
   | { type: "basic"; username: string; password: string }
-  | { type: "apikey"; key: string; value: string; in: "header" | "query" };
+  | { type: "apikey"; key: string; value: string; in: "header" | "query" }
+  | OAuth2Auth;
+
+export interface OAuth2Auth {
+  type: "oauth2";
+  grant: "client_credentials" | "authorization_code";
+  authUrl: string;
+  tokenUrl: string;
+  clientId: string;
+  clientSecret: string;
+  scope: string;
+  usePkce: boolean;
+  /** Empty uses http://127.0.0.1:<random port>/callback. */
+  redirectUri: string;
+  clientAuth: "header" | "body";
+  tokenPrefix: string;
+}
 
 export type AuthType = Auth["type"];
 

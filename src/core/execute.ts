@@ -8,7 +8,9 @@ import { useSettings } from "../state/settings";
 import { useTabs } from "../state/tabs";
 import { useVariables } from "../state/variables";
 import { useWorkspace } from "../state/workspace";
-import type { Chain } from "./auth";
+import { resolveAuth, type Chain } from "./auth";
+import { ensureFreshToken, tokenKey } from "./oauth2";
+import { oauthDeps, resolveOAuth, tokenCache } from "../state/oauthTokens";
 import { base64ToUtf8 } from "./encoding";
 import type { HttpRequestDoc } from "./model";
 import { buildChain, prepareRequest, withScheme } from "./prepare";
@@ -36,7 +38,12 @@ const chainFor = (root: string | null, path: string | null, doc: HttpRequestDoc)
 
 /** Prepares a tab's request exactly as it would be sent (variables, inherited auth, settings) — scripts excluded. */
 export function prepareForTab(root: string | null, path: string | null, doc: HttpRequestDoc) {
-  return prepareRequest(chainFor(root, path, doc), scopesFor(root), useSettings.getState().settings);
+  const chain = chainFor(root, path, doc);
+  const scopes = scopesFor(root);
+  const auth = resolveAuth(chain);
+  // Uses the cached OAuth token only; no network here.
+  const oauthToken = auth.type === "oauth2" ? tokenCache.get(tokenKey(resolveOAuth(auth, scopes)))?.accessToken : undefined;
+  return prepareRequest(chain, scopes, useSettings.getState().settings, { oauthToken });
 }
 
 const toScriptRequest = (d: HttpRequestDoc): ScriptRequest => ({
@@ -146,7 +153,10 @@ export async function executeDoc(target: ExecuteTarget, requestId: string = cryp
     scopes = pre.scopes;
     if (!pre.ok) throw new Error(out.errors[out.errors.length - 1]);
     const modified: HttpRequestDoc = { ...doc, method: pre.request.method as HttpRequestDoc["method"], url: pre.request.url, headers: pre.request.headers, body: pre.request.body };
-    const p = prepareRequest({ ...chain, request: modified }, scopes, settings);
+    const finalChain = { ...chain, request: modified };
+    const auth = resolveAuth(finalChain);
+    const oauthToken = auth.type === "oauth2" ? (await ensureFreshToken(resolveOAuth(auth, scopes), oauthDeps, tokenCache)).accessToken : undefined;
+    const p = prepareRequest(finalChain, scopes, settings, { oauthToken });
     prepared = p.request;
     unresolved = p.unresolved;
     result = await httpApi.send(prepared);

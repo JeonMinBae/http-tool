@@ -50,7 +50,7 @@ export function ContainerSettings({ tab }: { tab: Tab<CollectionDoc | FolderDoc>
           />
         )}
         {section === "scripts" && <ScriptsEditor scripts={d.scripts} onChange={(scripts) => patch({ scripts })} />}
-        {section === "auth" && <AuthEditor auth={d.auth} allowInherit={!isCollection} onChange={(auth) => patch({ auth })} />}
+        {section === "auth" && <AuthEditor auth={d.auth} root={tab.root} allowInherit={!isCollection} onChange={(auth) => patch({ auth })} />}
       </div>
     </div>
   );

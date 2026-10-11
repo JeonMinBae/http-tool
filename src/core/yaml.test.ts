@@ -87,3 +87,14 @@ describe("folder and collection yaml", () => {
     expect(parseCollection(text).variables[0]).toEqual({ key: "token", value: "", enabled: true, secret: true });
   });
 });
+
+describe("oauth2 auth yaml", () => {
+  it("round-trips and fills defaults", () => {
+    const r = parseRequest("kind: http\nname: X\nauth:\n  type: oauth2\n  tokenUrl: https://t\n  clientId: c");
+    expect(r.auth).toEqual({
+      type: "oauth2", grant: "client_credentials", authUrl: "", tokenUrl: "https://t", clientId: "c", clientSecret: "",
+      scope: "", usePkce: true, redirectUri: "", clientAuth: "header", tokenPrefix: "Bearer",
+    });
+    expect(parseRequest(serializeRequest(r))).toEqual(r);
+  });
+});

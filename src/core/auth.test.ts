@@ -51,4 +51,9 @@ describe("applyAuth", () => {
     const r = applyAuth(bearer("{{t}}"), { url: "http://a", headers: [] }, (v) => v.replace("{{t}}", "TOKEN"));
     expect(r.headers).toEqual([["Authorization", "Bearer TOKEN"]]);
   });
+  it("oauth2 uses the provided token with its prefix", () => {
+    const oauth = { type: "oauth2" as const, grant: "client_credentials" as const, authUrl: "", tokenUrl: "", clientId: "", clientSecret: "", scope: "", usePkce: true, redirectUri: "", clientAuth: "header" as const, tokenPrefix: "Token" };
+    expect(applyAuth(oauth, { url: "http://a", headers: [] }, id, "abc").headers).toEqual([["Authorization", "Token abc"]]);
+    expect(applyAuth(oauth, { url: "http://a", headers: [] }, id).headers).toEqual([]);
+  });
 });

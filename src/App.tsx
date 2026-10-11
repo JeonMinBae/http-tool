@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useOAuthTokens } from "./state/oauthTokens";
 import { useSettings } from "./state/settings";
 import { useVariables } from "./state/variables";
 import { useWorkspace } from "./state/workspace";
@@ -13,7 +14,7 @@ export default function App() {
   useShortcuts();
 
   useEffect(() => {
-    Promise.all([useSettings.getState().load(), useVariables.getState().load(), useWorkspace.getState().restore()])
+    Promise.all([useSettings.getState().load(), useVariables.getState().load(), useWorkspace.getState().restore(), useOAuthTokens.getState().load()])
       .catch((e) => setError(String(e)))
       .finally(() => setReady(true));
   }, []);

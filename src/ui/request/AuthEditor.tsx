@@ -1,4 +1,5 @@
 import type { Auth, AuthType } from "../../core/model";
+import { OAuth2Editor } from "./OAuth2Editor";
 
 const LABELS: Record<AuthType, string> = {
   inherit: "Inherit from parent",
@@ -6,6 +7,7 @@ const LABELS: Record<AuthType, string> = {
   bearer: "Bearer Token",
   basic: "Basic Auth",
   apikey: "API Key",
+  oauth2: "OAuth 2.0",
 };
 
 function defaults(type: AuthType): Auth {
@@ -16,6 +18,8 @@ function defaults(type: AuthType): Auth {
       return { type, username: "", password: "" };
     case "apikey":
       return { type, key: "", value: "", in: "header" };
+    case "oauth2":
+      return { type, grant: "client_credentials", authUrl: "", tokenUrl: "", clientId: "", clientSecret: "", scope: "", usePkce: true, redirectUri: "", clientAuth: "header", tokenPrefix: "Bearer" };
     default:
       return { type } as Auth;
   }
@@ -30,10 +34,10 @@ function Field({ label, value, onChange, type = "text" }: { label: string; value
   );
 }
 
-export function AuthEditor({ auth, onChange, allowInherit = true }: { auth: Auth; onChange: (a: Auth) => void; allowInherit?: boolean }) {
+export function AuthEditor({ auth, onChange, allowInherit = true, root = null }: { auth: Auth; onChange: (a: Auth) => void; allowInherit?: boolean; root?: string | null }) {
   const types = (Object.keys(LABELS) as AuthType[]).filter((t) => allowInherit || t !== "inherit");
   return (
-    <div className="flex max-w-xl flex-col gap-3">
+    <div className="flex max-w-2xl flex-col gap-3">
       <label className="grid grid-cols-[120px_1fr] items-center gap-3">
         <span className="text-muted">Type</span>
         <select className="rounded border border-line bg-elevated px-2 py-1.5" value={auth.type} onChange={(e) => onChange(defaults(e.target.value as AuthType))}>
@@ -65,7 +69,8 @@ export function AuthEditor({ auth, onChange, allowInherit = true }: { auth: Auth
           </label>
         </>
       )}
-      {auth.type !== "inherit" && auth.type !== "none" && <p className="text-[12px] text-muted">{"Values support {{variables}}."}</p>}
+      {auth.type === "oauth2" && <OAuth2Editor auth={auth} onChange={onChange} root={root} />}
+      {auth.type !== "inherit" && auth.type !== "none" && auth.type !== "oauth2" && <p className="text-[12px] text-muted">{"Values support {{variables}}."}</p>}
     </div>
   );
 }

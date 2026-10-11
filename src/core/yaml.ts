@@ -77,6 +77,20 @@ function auth(v: unknown, fallback: Auth): Auth {
       return { type: "basic", username: str(o.username), password: str(o.password) };
     case "apikey":
       return { type: "apikey", key: str(o.key), value: str(o.value), in: o.in === "query" ? "query" : "header" };
+    case "oauth2":
+      return {
+        type: "oauth2",
+        grant: o.grant === "authorization_code" ? "authorization_code" : "client_credentials",
+        authUrl: str(o.authUrl),
+        tokenUrl: str(o.tokenUrl),
+        clientId: str(o.clientId),
+        clientSecret: str(o.clientSecret),
+        scope: str(o.scope),
+        usePkce: bool(o.usePkce, true),
+        redirectUri: str(o.redirectUri),
+        clientAuth: o.clientAuth === "body" ? "body" : "header",
+        tokenPrefix: str(o.tokenPrefix, "Bearer"),
+      };
     default:
       return fallback;
   }

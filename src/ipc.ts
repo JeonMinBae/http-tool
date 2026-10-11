@@ -154,3 +154,8 @@ export const historyApi = {
   get: (id: string) => invoke<HistoryEntry>("history_get", { id }),
   clear: () => invoke<void>("history_clear"),
 };
+
+export const oauthApi = {
+  listen: (redirectUri: string) => invoke<{ redirectUri: string; port: number }>("oauth_listen", { redirectUri }),
+  wait: (port: number) => invoke<string>("oauth_wait", { port }),
+};

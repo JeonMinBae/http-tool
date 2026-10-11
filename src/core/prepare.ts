@@ -81,7 +81,7 @@ export function mergeSettings(req: RequestSettings, global: GlobalSettings) {
   };
 }
 
-export function prepareRequest(chain: Chain, scopes: VarScopes, settings: GlobalSettings): PreparedResult {
+export function prepareRequest(chain: Chain, scopes: VarScopes, settings: GlobalSettings, opts: { oauthToken?: string } = {}): PreparedResult {
   const req = chain.request;
   const unresolved = new Set<string>();
   const t = (v: string) => {
@@ -95,7 +95,7 @@ export function prepareRequest(chain: Chain, scopes: VarScopes, settings: Global
   const cookie = enabled(req.cookies).map((c) => `${t(c.key)}=${t(c.value)}`).join("; ");
   if (cookie) headers.push(["Cookie", cookie]);
 
-  const authed = applyAuth(resolveAuth(chain), { url: withScheme(t(req.url)), headers }, t);
+  const authed = applyAuth(resolveAuth(chain), { url: withScheme(t(req.url)), headers }, t, opts.oauthToken);
   const body = toPreparedBody(req.body, t);
   if (req.body.type === "raw" && !hasHeader(authed.headers, "content-type"))
     authed.headers.push(["Content-Type", RAW_CONTENT_TYPE[req.body.language]]);
