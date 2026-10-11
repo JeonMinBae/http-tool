@@ -1,7 +1,9 @@
+import { useResponses } from "../../state/responses";
 import { isDirty, useTabs, type Tab } from "../../state/tabs";
 import { closeTab, newUntitledRequest } from "../actions";
 import { showMenu } from "../common/ContextMenu";
 import { Icon } from "../common/icons";
+import { Spinner } from "../common/Spinner";
 import { methodColor, methodLabel } from "../common/methodColor";
 
 function TabLabel({ tab }: { tab: Tab }) {
@@ -14,6 +16,7 @@ function TabLabel({ tab }: { tab: Tab }) {
 
 export function TabBar() {
   const { tabs, activeId, activate } = useTabs();
+  const responses = useResponses((s) => s.byTab);
   return (
     <div className="flex h-9 shrink-0 items-stretch overflow-x-auto border-b border-line bg-panel">
       {tabs.map((t) => {
@@ -39,7 +42,7 @@ export function TabBar() {
               t.id === activeId ? "bg-bg shadow-[inset_0_2px_0_var(--accent)]" : "text-muted hover:bg-hover"
             }`}
           >
-            <TabLabel tab={t} />
+            {responses[t.id]?.status === "sending" ? <Spinner size={10} className="text-accent" /> : <TabLabel tab={t} />}
             <span className={`truncate ${t.path ? "" : "italic"}`}>{t.draft.name}</span>
             <button
               type="button"

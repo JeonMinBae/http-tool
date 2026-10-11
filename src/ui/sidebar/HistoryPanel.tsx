@@ -4,6 +4,7 @@ import { historyApi, type HistorySummary } from "../../ipc";
 import { historyExecState, useHistory } from "../../state/history";
 import { useResponses } from "../../state/responses";
 import { useTabs } from "../../state/tabs";
+import { markArrived } from "../response/arrival";
 import { alertError, confirmDanger } from "../common/dialogs";
 import { methodColor, methodLabel } from "../common/methodColor";
 
@@ -30,7 +31,11 @@ async function restore(item: HistorySummary) {
     const entry = await historyApi.get(item.id);
     const id = useTabs.getState().open(null, null, { ...entry.request, name: entry.request.name || shortUrl(entry.url) });
     const state = historyExecState(entry);
-    if (state) useResponses.getState().set(id, state);
+    if (state) {
+      // A stored response, not a fresh arrival: no flash.
+      markArrived(id, state.requestId);
+      useResponses.getState().set(id, state);
+    }
   } catch (e) {
     await alertError("Could not open history entry", e);
   }

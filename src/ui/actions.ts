@@ -11,6 +11,7 @@ import { isDirty, useTabs } from "../state/tabs";
 import { toast } from "../state/toasts";
 import { collectionRepo, useWorkspace } from "../state/workspace";
 import { askChoice, askText, confirmDanger } from "./common/dialogs";
+import { forgetArrival } from "./response/arrival";
 import { pickSaveLocation } from "./tabs/SaveAsDialog";
 
 const ws = () => useWorkspace.getState();
@@ -259,5 +260,6 @@ export async function closeTab(id: string) {
   await useStreams.getState().stop(id);
   await useWebSockets.getState().disconnect(id);
   useStreams.getState().clear(id);
+  forgetArrival(id);
   tabs().close(id);
 }

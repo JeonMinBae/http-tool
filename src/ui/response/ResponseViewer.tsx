@@ -1,23 +1,38 @@
 import { save } from "@tauri-apps/plugin-dialog";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { base64ToUtf8 } from "../../core/encoding";
 import { detectKind, formatSent, formatSize, headerValue, parseSetCookie, prettyJson, prettyXml, PRETTY_LIMIT, type BodyKind } from "../../core/responseFormat";
 import { fileApi, type HttpResult } from "../../ipc";
 import { useResponses } from "../../state/responses";
 import { toast } from "../../state/toasts";
 import type { TestResult } from "../../script/protocol";
+import { Spinner } from "../common/Spinner";
 import { CodeEditor, type EditorLanguage } from "../editor/CodeEditor";
 import { SectionTabs } from "../request/RequestEditor";
+import { isNewArrival, markArrived } from "./arrival";
 import { EventsView } from "./EventsView";
 
 type Section = "body" | "headers" | "cookies" | "request" | "tests";
 type BodyMode = "pretty" | "raw" | "preview";
 
-function statusColor(status: number) {
-  if (status < 300) return "text-ok";
-  if (status < 400) return "text-[#2563eb] dark:text-[#60a5fa]";
-  if (status < 500) return "text-warn";
-  return "text-danger";
+type Tone = "ok" | "info" | "warn" | "danger";
+
+function statusTone(status: number): Tone {
+  if (status < 300) return "ok";
+  if (status < 400) return "info";
+  if (status < 500) return "warn";
+  return "danger";
+}
+
+const TONE_TEXT: Record<Tone, string> = { ok: "text-ok", info: "text-info", warn: "text-warn", danger: "text-danger" };
+
+const flashStyle = (color: string) => ({ "--flash": `color-mix(in srgb, ${color} 22%, transparent)` }) as CSSProperties;
+
+/** True on the first render of a response this tab has not shown yet. */
+function useArrivalFlash(tabId: string, requestId: string) {
+  const [flash] = useState(() => isNewArrival(tabId, requestId));
+  useEffect(() => markArrived(tabId, requestId), [tabId, requestId]);
+  return flash;
 }
 
 const LANG: Record<BodyKind, EditorLanguage> = { json: "json", xml: "xml", html: "html", image: "text", text: "text", binary: "text" };
@@ -168,15 +183,19 @@ function Tests({ tests, scriptError }: { tests: TestResult[]; scriptError?: stri
   );
 }
 
-function Result({ tabId, r, tests = [], scriptError, truncated }: { tabId: string; r: HttpResult; tests?: TestResult[]; scriptError?: string; truncated?: boolean }) {
+function Result({ tabId, requestId, r, tests = [], scriptError, truncated }: { tabId: string; requestId: string; r: HttpResult; tests?: TestResult[]; scriptError?: string; truncated?: boolean }) {
   const [section, setSection] = useState<Section>("body");
+  const flash = useArrivalFlash(tabId, requestId);
   const failed = tests.filter((t) => !t.passed).length;
   const cookieCount = r.headers.filter(([k]) => k.toLowerCase() === "set-cookie").length;
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-4 border-b border-line px-3 py-1.5">
+      <div
+        className={`flex items-center gap-4 border-b border-line px-3 py-1.5 ${flash ? "animate-flash" : ""}`}
+        style={flash ? flashStyle(`var(--${statusTone(r.status)})`) : undefined}
+      >
         <span className="font-semibold">Response</span>
-        <span className={`font-semibold ${statusColor(r.status)}`}>
+        <span className={`font-semibold ${TONE_TEXT[statusTone(r.status)]}`}>
           {r.status} {r.statusText}
         </span>
         <span className="text-muted">{r.elapsedMs} ms</span>
@@ -215,16 +234,35 @@ function Result({ tabId, r, tests = [], scriptError, truncated }: { tabId: strin
   );
 }
 
+function Sending({ startedAt }: { startedAt: number }) {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 100);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div className="flex h-full items-center justify-center gap-2 text-muted">
+      <Spinner />
+      Sending…
+      <span className="mono tabular-nums">{(Math.max(0, now - startedAt) / 1000).toFixed(1)}s</span>
+    </div>
+  );
+}
+
+function Failed({ tabId, requestId, error }: { tabId: string; requestId: string; error: string }) {
+  const flash = useArrivalFlash(tabId, requestId);
+  return (
+    <div className={`p-4 ${flash ? "animate-flash" : ""}`} style={flash ? flashStyle("var(--danger)") : undefined}>
+      <p className="mb-1 font-semibold text-danger">Request failed</p>
+      <p className="mono select-text whitespace-pre-wrap break-all">{error}</p>
+    </div>
+  );
+}
+
 export function ResponseViewer({ tabId }: { tabId: string }) {
   const exec = useResponses((s) => s.byTab[tabId]);
   if (!exec) return <div className="flex h-full items-center justify-center text-muted">Send a request to see the response.</div>;
-  if (exec.status === "sending") return <div className="flex h-full items-center justify-center text-muted">Sending…</div>;
-  if (exec.status === "error")
-    return (
-      <div className="p-4">
-        <p className="mb-1 font-semibold text-danger">Request failed</p>
-        <p className="mono select-text whitespace-pre-wrap break-all">{exec.error}</p>
-      </div>
-    );
-  return <Result tabId={tabId} r={exec.result} tests={exec.tests} scriptError={exec.scriptError} truncated={exec.truncated} />;
+  if (exec.status === "sending") return <Sending startedAt={exec.startedAt} />;
+  if (exec.status === "error") return <Failed key={exec.requestId} tabId={tabId} requestId={exec.requestId} error={exec.error} />;
+  return <Result key={exec.requestId} tabId={tabId} requestId={exec.requestId} r={exec.result} tests={exec.tests} scriptError={exec.scriptError} truncated={exec.truncated} />;
 }
