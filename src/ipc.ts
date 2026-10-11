@@ -139,7 +139,8 @@ export const cookieApi = {
 export const fileApi = {
   saveBase64: (path: string, data: string) => invoke<void>("file_save_base64", { path, data }),
   saveText: (path: string, text: string) => invoke<void>("file_save_base64", { path, data: utf8ToBase64(text) }),
-  readText: (path: string) => invoke<string>("file_read_text", { path }),
+  /** Lets the user pick a text file and returns its contents; null when cancelled. */
+  pickText: (title: string, extensions: string[]) => invoke<{ name: string; content: string } | null>("file_pick_text", { title, extensions }),
   /** Creates a new folder (suffixed when taken) for an imported collection; returns its path. */
   createUniqueDir: (parent: string, name: string) => invoke<string>("dir_create_unique", { parent, name }),
 };

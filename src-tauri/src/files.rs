@@ -12,9 +12,35 @@ pub fn file_save_base64(path: String, data: String) -> AppResult<()> {
     Ok(())
 }
 
-/// Reads a UTF-8 text file the user picked in an open dialog.
+/// Largest import file accepted (bytes).
+const MAX_TEXT_FILE: u64 = 32 * 1024 * 1024;
+
+#[derive(serde::Serialize)]
+pub struct PickedText {
+    pub name: String,
+    pub content: String,
+}
+
+/// Shows an open dialog and reads the chosen UTF-8 file. The webview never supplies the path,
+/// so this cannot be used to read arbitrary files. `None` when the dialog is cancelled.
 #[tauri::command]
-pub fn file_read_text(path: String) -> AppResult<String> {
+pub async fn file_pick_text(app: tauri::AppHandle, title: String, extensions: Vec<String>) -> AppResult<Option<PickedText>> {
+    use tauri_plugin_dialog::DialogExt;
+    let exts: Vec<&str> = extensions.iter().map(String::as_str).collect();
+    let Some(picked) = app.dialog().file().set_title(title).add_filter("Supported files", &exts).blocking_pick_file() else {
+        return Ok(None);
+    };
+    let path = picked.into_path().map_err(|e| AppError::Invalid(e.to_string()))?;
+    let content = read_text_capped(&path, MAX_TEXT_FILE)?;
+    let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    Ok(Some(PickedText { name, content }))
+}
+
+fn read_text_capped(path: &std::path::Path, max: u64) -> AppResult<String> {
+    let size = std::fs::metadata(path)?.len();
+    if size > max {
+        return Err(AppError::Invalid(format!("file is too large ({size} bytes, limit {max})")));
+    }
     Ok(std::fs::read_to_string(path)?)
 }
 
@@ -59,6 +85,15 @@ mod tests {
         let p = create_unique_dir(dir.path(), "Pets").unwrap();
         assert_eq!(p.file_name().unwrap(), "Pets-3");
         assert!(p.is_dir());
+    }
+
+    #[test]
+    fn read_text_capped_rejects_large_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path().join("a.json");
+        std::fs::write(&p, "{\"a\":1}").unwrap();
+        assert_eq!(read_text_capped(&p, 100).unwrap(), "{\"a\":1}");
+        assert!(read_text_capped(&p, 3).is_err());
     }
 
     #[test]

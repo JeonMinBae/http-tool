@@ -1,4 +1,3 @@
-import { open } from "@tauri-apps/plugin-dialog";
 import { useMemo, useState } from "react";
 import type { LoadedCollection, TreeNode } from "../../core/collectionRepo";
 import { detectImport } from "../../core/transfer/detect";
@@ -46,10 +45,10 @@ function ImportBody({ close }: { close: () => void }) {
   const [busy, setBusy] = useState(false);
 
   const chooseFile = async () => {
-    const p = await open({ multiple: false, filters: [{ name: "JSON / YAML", extensions: ["json", "yaml", "yml"] }] });
-    if (typeof p !== "string") return;
     try {
-      setText(await fileApi.readText(p));
+      const picked = await fileApi.pickText("Import file", ["json", "yaml", "yml"]);
+      if (!picked) return;
+      setText(picked.content);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
