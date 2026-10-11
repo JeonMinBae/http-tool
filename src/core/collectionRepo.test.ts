@@ -198,4 +198,22 @@ describe("importItems", () => {
     await repo.importItems(DIR, [{ ...emptyRequest("A"), url: "new" }]);
     expect(parseRequest(fs.files.get(path)!).url).toBe("keep");
   });
+
+  it("reads the target directory once regardless of item count", async () => {
+    let reads = 0;
+    const readTree = fs.readTree.bind(fs);
+    fs.readTree = async (root: string) => {
+      reads++;
+      return readTree(root);
+    };
+    await repo.importItems(DIR, [
+      ...Array.from({ length: 20 }, (_, i) => emptyRequest(`R${i % 5}`)),
+      { ...emptyFolder("F"), items: [emptyRequest("A"), emptyRequest("A")] },
+    ]);
+    expect(reads).toBe(1);
+    const col = await repo.load(DIR);
+    expect(col.children).toHaveLength(21);
+    expect(col.children.map((n) => n.doc.seq)).toEqual([...Array(21).keys()]);
+    expect(new Set(col.children.map((n) => n.doc.name)).size).toBe(21);
+  });
 });

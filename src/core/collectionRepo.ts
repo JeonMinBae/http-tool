@@ -166,25 +166,44 @@ export class CollectionRepo {
     return path;
   }
 
-  async createFolder(parent: string, name: string, base?: Pick<FolderDoc, "auth" | "scripts">): Promise<string> {
+  async createFolder(parent: string, name: string): Promise<string> {
     const path = joinPath(parent, toDirName(name, await this.takenNames(parent)));
     const seq = await this.nextSeq(parent);
     await this.fs.createDir(path);
-    await this.saveFolder(path, { ...emptyFolder(name, seq), ...(base && { auth: base.auth, scripts: base.scripts }) });
+    await this.saveFolder(path, emptyFolder(name, seq));
     return path;
   }
 
-  /** Writes imported nodes into `dir` after its existing items, renaming on name clashes. Never overwrites. */
+  /**
+   * Writes imported nodes into `dir` after its existing items, renaming on name clashes. Never overwrites.
+   * Reads `dir` once and tracks names and seq in memory, so large imports stay linear.
+   */
   async importItems(dir: string, items: TransferNode[]): Promise<void> {
-    const taken = new Set(this.convert(await this.fs.readTree(dir), []).map((n) => n.doc.name.toLowerCase()));
+    const tree = await this.fs.readTree(dir);
+    const nodes = this.convert(tree, []);
+    await this.writeImported(dir, items, {
+      files: new Set(tree.children.map((c) => c.name.toLowerCase())),
+      names: new Set(nodes.map((n) => n.doc.name.toLowerCase())),
+      seq: nodes.length ? Math.max(...nodes.map((n) => n.doc.seq)) + 1 : 0,
+    });
+  }
+
+  private async writeImported(dir: string, items: TransferNode[], slot: { files: Set<string>; names: Set<string>; seq: number }): Promise<void> {
     for (const item of items) {
-      const name = uniqueName(item.name, taken);
-      taken.add(name.toLowerCase());
+      const name = uniqueName(item.name, slot.names);
+      slot.names.add(name.toLowerCase());
+      const seq = slot.seq++;
       if (item.kind === "folder") {
-        const { items: children, ...folder } = item;
-        await this.importItems(await this.createFolder(dir, name, folder), children);
+        const dirEntry = toDirName(name, slot.files);
+        slot.files.add(dirEntry.toLowerCase());
+        const path = joinPath(dir, dirEntry);
+        await this.fs.createDir(path);
+        await this.saveFolder(path, { ...emptyFolder(name, seq), auth: item.auth, scripts: item.scripts });
+        await this.writeImported(path, item.items, { files: new Set(), names: new Set(), seq: 0 });
       } else {
-        await this.createRequest(dir, { ...item, name });
+        const file = toFileName(name, slot.files);
+        slot.files.add(file.toLowerCase());
+        await this.saveRequest(joinPath(dir, file), { ...item, name, seq });
       }
     }
   }
