@@ -1856,6 +1856,7 @@ dependencies = [
  "base64 0.22.1",
  "cookie_store",
  "dunce",
+ "futures-util",
  "httpmock",
  "reqwest 0.12.28",
  "serde",

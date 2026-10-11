@@ -4,6 +4,7 @@ import { executeRequest } from "../../core/execute";
 import { HTTP_METHODS, type HttpMethod, type HttpRequestDoc } from "../../core/model";
 import { syncParamsFromUrl } from "../../core/params";
 import { useResponses } from "../../state/responses";
+import { useStreams } from "../../state/streams";
 import { useTabs, type Tab } from "../../state/tabs";
 import { saveTab } from "../actions";
 import { Button, IconButton } from "../common/Button";
@@ -64,7 +65,13 @@ export function UrlBar({ tab }: { tab: Tab<HttpRequestDoc> }) {
         </div>
       </div>
       {sending ? (
-        <Button className="w-20" onClick={() => useResponses.getState().cancel(tab.id)}>
+        <Button
+          className="w-20"
+          onClick={() => {
+            useResponses.getState().cancel(tab.id);
+            void useStreams.getState().stop(tab.id);
+          }}
+        >
           Cancel
         </Button>
       ) : (

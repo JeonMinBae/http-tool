@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 
 export interface FsEntry {
   name: string;
@@ -94,6 +94,15 @@ export interface HttpResult {
   elapsedMs: number;
   sent: SentRequest;
   redirects: RedirectHop[];
+  /** Body is delivered through the stream channel (text/event-stream). */
+  streaming: boolean;
+}
+
+export type StreamEvent = { type: "chunk"; text: string } | { type: "end" } | { type: "error"; message: string };
+
+export interface StreamOptions {
+  id: string;
+  onEvent: (e: StreamEvent) => void;
 }
 
 export interface CookieInfo {
@@ -109,7 +118,13 @@ export interface CookieInfo {
 }
 
 export const httpApi = {
-  send: (request: PreparedRequest) => invoke<HttpResult>("http_send", { request }),
+  /** With `stream`, an event-stream response returns immediately and its body arrives via `onEvent`. */
+  send(request: PreparedRequest, stream?: StreamOptions) {
+    const onEvent = new Channel<StreamEvent>();
+    if (stream) onEvent.onmessage = stream.onEvent;
+    return invoke<HttpResult>("http_send", { request, streamId: stream?.id ?? null, onEvent });
+  },
+  cancelStream: (streamId: string) => invoke<boolean>("stream_cancel", { streamId }),
 };
 
 export const cookieApi = {

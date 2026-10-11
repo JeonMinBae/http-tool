@@ -2,6 +2,7 @@ import { open as openDialogPicker } from "@tauri-apps/plugin-dialog";
 import type { TreeNode } from "../core/collectionRepo";
 import { emptyRequest, type HttpRequestDoc } from "../core/model";
 import { samePath } from "../core/path";
+import { useStreams } from "../state/streams";
 import { useExpanded } from "../state/treeExpand";
 import { isDirty, useTabs } from "../state/tabs";
 import { collectionRepo, useWorkspace } from "../state/workspace";
@@ -191,5 +192,7 @@ export async function closeTab(id: string) {
     if (choice === "cancel") return;
     if (choice === "save" && !(await saveTab(id))) return;
   }
+  await useStreams.getState().stop(id);
+  useStreams.getState().clear(id);
   tabs().close(id);
 }

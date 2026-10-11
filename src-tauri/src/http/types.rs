@@ -75,6 +75,8 @@ pub struct HttpResult {
     /// The request actually sent for the final hop.
     pub sent: SentRequest,
     pub redirects: Vec<RedirectHop>,
+    /// True when the body is delivered as a server-sent event stream instead of `body_base64`.
+    pub streaming: bool,
 }
 
 #[cfg(test)]

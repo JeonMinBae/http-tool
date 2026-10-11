@@ -18,6 +18,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState::default())
         .manage(oauth::OAuthListeners::default())
+        .manage(http::stream::StreamRegistry::default())
         .setup(|app| {
             let dir = appdata::data_dir(app.handle())?;
             app.manage(cookies::CookieJar::load(dir.join("cookies.json")));
@@ -31,6 +32,7 @@ pub fn run() {
             cookies::cookie_delete,
             cookies::cookie_clear,
             http::client::http_send,
+            http::stream::stream_cancel,
             history::history_append,
             history::history_list,
             history::history_get,

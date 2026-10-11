@@ -8,6 +8,7 @@ import type { TestResult } from "../../script/protocol";
 import { alertError } from "../common/dialogs";
 import { CodeEditor, type EditorLanguage } from "../editor/CodeEditor";
 import { SectionTabs } from "../request/RequestEditor";
+import { EventsView } from "./EventsView";
 
 type Section = "body" | "headers" | "cookies" | "request" | "tests";
 type BodyMode = "pretty" | "raw" | "preview";
@@ -167,7 +168,7 @@ function Tests({ tests, scriptError }: { tests: TestResult[]; scriptError?: stri
   );
 }
 
-function Result({ r, tests = [], scriptError }: { r: HttpResult; tests?: TestResult[]; scriptError?: string }) {
+function Result({ tabId, r, tests = [], scriptError }: { tabId: string; r: HttpResult; tests?: TestResult[]; scriptError?: string }) {
   const [section, setSection] = useState<Section>("body");
   const failed = tests.filter((t) => !t.passed).length;
   const cookieCount = r.headers.filter(([k]) => k.toLowerCase() === "set-cookie").length;
@@ -179,7 +180,7 @@ function Result({ r, tests = [], scriptError }: { r: HttpResult; tests?: TestRes
           {r.status} {r.statusText}
         </span>
         <span className="text-muted">{r.elapsedMs} ms</span>
-        <span className="text-muted">{formatSize(r.size)}</span>
+        <span className="text-muted">{r.streaming ? "streaming" : formatSize(r.size)}</span>
         <span className="text-muted">{r.httpVersion}</span>
       </div>
       <Redirects r={r} />
@@ -187,7 +188,7 @@ function Result({ r, tests = [], scriptError }: { r: HttpResult; tests?: TestRes
         active={section}
         onSelect={setSection}
         sections={[
-          { id: "body", label: "Body" },
+          { id: "body", label: r.streaming ? "Events" : "Body" },
           { id: "headers", label: "Headers", badge: r.headers.length },
           { id: "cookies", label: "Cookies", badge: cookieCount },
           { id: "request", label: "Request" },
@@ -195,7 +196,7 @@ function Result({ r, tests = [], scriptError }: { r: HttpResult; tests?: TestRes
         ]}
       />
       <div className="min-h-0 flex-1 overflow-auto p-3">
-        {section === "body" && <Body key={r.bodyBase64.length + r.elapsedMs} r={r} />}
+        {section === "body" && (r.streaming ? <EventsView tabId={tabId} /> : <Body key={r.bodyBase64.length + r.elapsedMs} r={r} />)}
         {section === "headers" && <Table rows={r.headers} />}
         {section === "cookies" && <Cookies r={r} />}
         {section === "tests" && <Tests tests={tests} scriptError={scriptError} />}
@@ -220,5 +221,5 @@ export function ResponseViewer({ tabId }: { tabId: string }) {
         <p className="mono select-text whitespace-pre-wrap break-all">{exec.error}</p>
       </div>
     );
-  return <Result r={exec.result} tests={exec.tests} scriptError={exec.scriptError} />;
+  return <Result tabId={tabId} r={exec.result} tests={exec.tests} scriptError={exec.scriptError} />;
 }

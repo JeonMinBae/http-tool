@@ -1,10 +1,11 @@
-import { httpApi, type HttpResult, type PreparedRequest } from "../ipc";
+import { httpApi, type HttpResult, type PreparedRequest, type StreamOptions } from "../ipc";
 import { runScript } from "../script/host";
 import type { LogEntry, ScriptInput, ScriptRequest, ScriptResponse, ScriptSendRequest, TestResult } from "../script/protocol";
 import { useConsole } from "../state/console";
 import { useHistory } from "../state/history";
 import { useResponses } from "../state/responses";
 import { useSettings } from "../state/settings";
+import { useStreams } from "../state/streams";
 import { useTabs } from "../state/tabs";
 import { useVariables } from "../state/variables";
 import { useWorkspace } from "../state/workspace";
@@ -134,7 +135,7 @@ export interface ExecuteTarget {
 }
 
 /** Runs pre-request scripts, sends the request, runs post-response scripts and records history/console. */
-export async function executeDoc(target: ExecuteTarget, requestId: string = crypto.randomUUID()): Promise<ExecutionOutcome> {
+export async function executeDoc(target: ExecuteTarget, requestId: string = crypto.randomUUID(), stream?: StreamOptions): Promise<ExecutionOutcome> {
   const { root, path, doc } = target;
   const settings = useSettings.getState().settings;
   const chain = chainFor(root, path, doc);
@@ -159,9 +160,12 @@ export async function executeDoc(target: ExecuteTarget, requestId: string = cryp
     const p = prepareRequest(finalChain, scopes, settings, { oauthToken });
     prepared = p.request;
     unresolved = p.unresolved;
-    result = await httpApi.send(prepared);
-    const post = await runPhase("post", chain, { scopes, request: pre.request, response: toScriptResponse(result), hasEnvironment }, out);
-    scopes = post.scopes;
+    result = await httpApi.send(prepared, stream);
+    // Event streams have no complete body to test against, so post-response scripts are skipped.
+    if (!result.streaming) {
+      const post = await runPhase("post", chain, { scopes, request: pre.request, response: toScriptResponse(result), hasEnvironment }, out);
+      scopes = post.scopes;
+    }
   } catch (e) {
     error = e instanceof Error ? e.message : String(e);
   }
@@ -202,7 +206,11 @@ export async function executeRequest(tabId: string): Promise<ExecutionOutcome | 
   if (!tab || tab.draft.kind !== "http") return undefined;
   const requestId = crypto.randomUUID();
   useResponses.getState().start(tabId, requestId, []);
-  const outcome = await executeDoc({ root: tab.root, path: tab.path, doc: tab.draft }, requestId);
+  await useStreams.getState().stop(tabId);
+  useStreams.getState().clear(tabId);
+  const stream: StreamOptions = { id: requestId, onEvent: useStreams.getState().begin(tabId, requestId) };
+  const outcome = await executeDoc({ root: tab.root, path: tab.path, doc: tab.draft }, requestId, stream);
+  if (!outcome.result?.streaming) useStreams.getState().clear(tabId);
   const responses = useResponses.getState();
   if (outcome.result) responses.finish(tabId, requestId, outcome.result, { tests: outcome.tests, scriptError: outcome.scriptError, unresolved: outcome.unresolved });
   else responses.fail(tabId, requestId, outcome.error ?? "Request failed", outcome.unresolved);

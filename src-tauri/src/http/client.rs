@@ -6,7 +6,9 @@ use reqwest::{Client, Method, Proxy, RequestBuilder};
 use tauri::State;
 use url::Url;
 
+use super::stream::{StreamEvent, StreamRegistry};
 use super::types::*;
+use tauri::ipc::Channel;
 use crate::cookies::CookieJar;
 use crate::error::{AppError, AppResult};
 
@@ -153,7 +155,21 @@ fn map_reqwest_err(e: reqwest::Error, timeout_ms: u64) -> AppError {
     AppError::Http(msg)
 }
 
+#[cfg(test)]
 pub async fn send(req: PreparedRequest, jar: &CookieJar) -> AppResult<HttpResult> {
+    send_with(req, jar, false).await.map(|(r, _)| r)
+}
+
+fn is_event_stream(resp: &reqwest::Response) -> bool {
+    resp.headers()
+        .get(CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|ct| ct.to_ascii_lowercase().starts_with("text/event-stream"))
+}
+
+/// Sends the request. With `allow_stream`, an event-stream response is returned unread so the caller
+/// can forward its body incrementally.
+pub async fn send_with(req: PreparedRequest, jar: &CookieJar, allow_stream: bool) -> AppResult<(HttpResult, Option<reqwest::Response>)> {
     let client = build_client(&req)?;
     let started = Instant::now();
     let mut method: Method = req
@@ -206,9 +222,25 @@ pub async fn send(req: PreparedRequest, jar: &CookieJar) -> AppResult<HttpResult
         jar.persist()?;
         let http_version = format!("{:?}", resp.version());
         let headers = header_pairs(resp.headers());
+        if allow_stream && is_event_stream(&resp) {
+            let result = HttpResult {
+                status: status.as_u16(),
+                status_text: status.canonical_reason().unwrap_or("").to_string(),
+                http_version,
+                headers,
+                body_base64: String::new(),
+                is_text: true,
+                size: 0,
+                elapsed_ms: started.elapsed().as_millis() as u64,
+                sent,
+                redirects,
+                streaming: true,
+            };
+            return Ok((result, Some(resp)));
+        }
         let content_type = resp.headers().get(CONTENT_TYPE).and_then(|v| v.to_str().ok()).map(str::to_string);
         let bytes = resp.bytes().await.map_err(|e| map_reqwest_err(e, req.timeout_ms))?;
-        return Ok(HttpResult {
+        return Ok((HttpResult {
             status: status.as_u16(),
             status_text: status.canonical_reason().unwrap_or("").to_string(),
             http_version,
@@ -219,13 +251,27 @@ pub async fn send(req: PreparedRequest, jar: &CookieJar) -> AppResult<HttpResult
             elapsed_ms: started.elapsed().as_millis() as u64,
             sent,
             redirects,
-        });
+            streaming: false,
+        }, None));
     }
 }
 
 #[tauri::command]
-pub async fn http_send(jar: State<'_, CookieJar>, request: PreparedRequest) -> AppResult<HttpResult> {
-    send(request, &jar).await
+pub async fn http_send(
+    jar: State<'_, CookieJar>,
+    streams: State<'_, StreamRegistry>,
+    request: PreparedRequest,
+    stream_id: Option<String>,
+    on_event: Channel<StreamEvent>,
+) -> AppResult<HttpResult> {
+    let (result, resp) = send_with(request, &jar, stream_id.is_some()).await?;
+    if let (Some(resp), Some(id)) = (resp, stream_id) {
+        let channel = on_event;
+        streams.spawn(id, resp, move |e| {
+            let _ = channel.send(e);
+        });
+    }
+    Ok(result)
 }
 
 #[cfg(test)]
