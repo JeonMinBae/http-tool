@@ -7,6 +7,7 @@ import { AuthEditor } from "./AuthEditor";
 import { BodyEditor } from "./BodyEditor";
 import { SettingsTab } from "./SettingsTab";
 import { UrlBar } from "./UrlBar";
+import { useVarExtension } from "../editor/useScopes";
 
 type Section = "params" | "headers" | "body" | "auth" | "cookies" | "settings";
 
@@ -35,6 +36,7 @@ export function RequestEditor({ tab }: { tab: Tab<HttpRequestDoc> }) {
   const [section, setSection] = useState<Section>("params");
   const update = useTabs((s) => s.update);
   const d = tab.draft;
+  const varExt = useVarExtension(tab.root);
   const patch = (p: Partial<HttpRequestDoc>) => update<HttpRequestDoc>(tab.id, (x) => ({ ...x, ...p }));
 
   return (
@@ -61,7 +63,7 @@ export function RequestEditor({ tab }: { tab: Tab<HttpRequestDoc> }) {
           />
         )}
         {section === "headers" && <KeyValueTable rows={d.headers} makeRow={kv} onChange={(headers) => patch({ headers })} />}
-        {section === "body" && <BodyEditor body={d.body} onChange={(body) => patch({ body })} />}
+        {section === "body" && <BodyEditor body={d.body} extensions={varExt} onChange={(body) => patch({ body })} />}
         {section === "auth" && <AuthEditor auth={d.auth} onChange={(auth) => patch({ auth })} />}
         {section === "cookies" && (
           <>

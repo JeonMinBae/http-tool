@@ -1,4 +1,5 @@
-import type { HttpRequestDoc } from "../../core/model";
+import type { CollectionDoc, FolderDoc, HttpRequestDoc } from "../../core/model";
+import { ContainerSettings } from "../collection/ContainerSettings";
 import { useResponses } from "../../state/responses";
 import { useTabs, type Tab } from "../../state/tabs";
 import { Split } from "../common/Split";
@@ -25,7 +26,7 @@ export function RequestPane() {
       </div>
     );
   }
-  if (tab.draft.kind !== "http") return <div className="p-4 text-muted">{tab.draft.name}</div>;
+  if (tab.draft.kind !== "http") return <ContainerSettings key={tab.id} tab={tab as Tab<CollectionDoc | FolderDoc>} />;
   const reqTab = tab as Tab<HttpRequestDoc>;
   return (
     <Split

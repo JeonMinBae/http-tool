@@ -2,6 +2,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import type { Body, BodyType, FormField, KeyValue, RawLanguage } from "../../core/model";
 import { Button } from "../common/Button";
 import { KeyValueTable } from "../common/KeyValueTable";
+import type { Extension } from "@codemirror/state";
 import { CodeEditor } from "../editor/CodeEditor";
 
 const TYPES: { type: BodyType; label: string }[] = [
@@ -53,7 +54,7 @@ export function beautify(content: string, language: RawLanguage): string {
   }
 }
 
-export function BodyEditor({ body, onChange }: { body: Body; onChange: (b: Body) => void }) {
+export function BodyEditor({ body, onChange, extensions }: { body: Body; onChange: (b: Body) => void; extensions?: Extension[] }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -89,7 +90,7 @@ export function BodyEditor({ body, onChange }: { body: Body; onChange: (b: Body)
 
       {body.type === "raw" && (
         <div className="min-h-0 flex-1 rounded border border-line">
-          <CodeEditor value={body.content} language={body.language} onChange={(content) => onChange({ ...body, content })} />
+          <CodeEditor extensions={extensions} value={body.content} language={body.language} onChange={(content) => onChange({ ...body, content })} />
         </div>
       )}
 
@@ -138,13 +139,13 @@ export function BodyEditor({ body, onChange }: { body: Body; onChange: (b: Body)
           <div className="flex min-h-0 flex-col">
             <span className="mb-1 text-[12px] text-muted">Query</span>
             <div className="min-h-0 flex-1 rounded border border-line">
-              <CodeEditor value={body.query} language="graphql" onChange={(query) => onChange({ ...body, query })} />
+              <CodeEditor extensions={extensions} value={body.query} language="graphql" onChange={(query) => onChange({ ...body, query })} />
             </div>
           </div>
           <div className="flex min-h-0 flex-col">
             <span className="mb-1 text-[12px] text-muted">GraphQL Variables (JSON)</span>
             <div className="min-h-0 flex-1 rounded border border-line">
-              <CodeEditor value={body.variables} language="json" onChange={(variables) => onChange({ ...body, variables })} />
+              <CodeEditor extensions={extensions} value={body.variables} language="json" onChange={(variables) => onChange({ ...body, variables })} />
             </div>
           </div>
         </div>

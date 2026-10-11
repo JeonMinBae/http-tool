@@ -8,6 +8,7 @@ import { saveTab } from "../actions";
 import { Button } from "../common/Button";
 import { methodColor } from "../common/methodColor";
 import { CodeEditor } from "../editor/CodeEditor";
+import { useVarExtension } from "../editor/useScopes";
 
 export function UrlBar({ tab }: { tab: Tab<HttpRequestDoc> }) {
   const update = useTabs((s) => s.update);
@@ -15,6 +16,7 @@ export function UrlBar({ tab }: { tab: Tab<HttpRequestDoc> }) {
   const sending = exec?.status === "sending";
   const send = useCallback(() => void executeRequest(tab.id), [tab.id]);
   const d = tab.draft;
+  const varExt = useVarExtension(tab.root);
 
   return (
     <div className="flex items-center gap-2 px-3 py-2">
@@ -33,6 +35,7 @@ export function UrlBar({ tab }: { tab: Tab<HttpRequestDoc> }) {
         <div className="min-w-0 flex-1">
           <CodeEditor
             singleLine
+            extensions={varExt}
             value={d.url}
             placeholder="Enter URL or paste text"
             onEnter={send}
