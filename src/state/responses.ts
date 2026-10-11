@@ -4,7 +4,17 @@ import type { TestResult } from "../script/protocol";
 
 export type ExecState =
   | { status: "sending"; requestId: string; startedAt: number; unresolved: string[] }
-  | { status: "done"; requestId: string; result: HttpResult; unresolved: string[]; receivedAt: number; tests?: TestResult[]; scriptError?: string }
+  | {
+      status: "done";
+      requestId: string;
+      result: HttpResult;
+      unresolved: string[];
+      receivedAt: number;
+      tests?: TestResult[];
+      scriptError?: string;
+      /** Restored from history whose stored body was cut at 1 MB. */
+      truncated?: boolean;
+    }
   | { status: "error"; requestId: string; error: string; unresolved: string[] };
 
 interface ResponsesState {

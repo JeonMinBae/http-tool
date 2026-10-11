@@ -168,7 +168,7 @@ function Tests({ tests, scriptError }: { tests: TestResult[]; scriptError?: stri
   );
 }
 
-function Result({ tabId, r, tests = [], scriptError }: { tabId: string; r: HttpResult; tests?: TestResult[]; scriptError?: string }) {
+function Result({ tabId, r, tests = [], scriptError, truncated }: { tabId: string; r: HttpResult; tests?: TestResult[]; scriptError?: string; truncated?: boolean }) {
   const [section, setSection] = useState<Section>("body");
   const failed = tests.filter((t) => !t.passed).length;
   const cookieCount = r.headers.filter(([k]) => k.toLowerCase() === "set-cookie").length;
@@ -184,6 +184,11 @@ function Result({ tabId, r, tests = [], scriptError }: { tabId: string; r: HttpR
         <span className="text-muted">{r.httpVersion}</span>
       </div>
       <Redirects r={r} />
+      {truncated && (
+        <div className="border-b border-line px-3 py-1 text-[12px] text-warn">
+          Body truncated to 1 MB when saved to history. Send the request again to see the full response.
+        </div>
+      )}
       <SectionTabs<Section>
         active={section}
         onSelect={setSection}
@@ -221,5 +226,5 @@ export function ResponseViewer({ tabId }: { tabId: string }) {
         <p className="mono select-text whitespace-pre-wrap break-all">{exec.error}</p>
       </div>
     );
-  return <Result tabId={tabId} r={exec.result} tests={exec.tests} scriptError={exec.scriptError} />;
+  return <Result tabId={tabId} r={exec.result} tests={exec.tests} scriptError={exec.scriptError} truncated={exec.truncated} />;
 }

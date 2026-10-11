@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { HTTP_METHODS, type HttpMethod } from "../../core/model";
 import { historyApi, type HistorySummary } from "../../ipc";
-import { useHistory } from "../../state/history";
+import { historyExecState, useHistory } from "../../state/history";
 import { useResponses } from "../../state/responses";
 import { useTabs } from "../../state/tabs";
 import { alertError, confirmDanger } from "../common/dialogs";
@@ -29,9 +29,8 @@ async function restore(item: HistorySummary) {
   try {
     const entry = await historyApi.get(item.id);
     const id = useTabs.getState().open(null, null, { ...entry.request, name: entry.request.name || shortUrl(entry.url) });
-    const responses = useResponses.getState();
-    if (entry.result) responses.set(id, { status: "done", requestId: entry.id, result: entry.result, unresolved: [], receivedAt: entry.time });
-    else if (entry.error) responses.set(id, { status: "error", requestId: entry.id, error: entry.error, unresolved: [] });
+    const state = historyExecState(entry);
+    if (state) useResponses.getState().set(id, state);
   } catch (e) {
     await alertError("Could not open history entry", e);
   }
