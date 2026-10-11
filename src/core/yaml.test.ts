@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { emptyCollection, emptyFolder, emptyRequest, type HttpRequestDoc } from "./model";
 import {
+  toCollection,
+  toRequest,
+  toWebSocket,
   parseCollection,
   parseFolder,
   parseRequest,
@@ -109,5 +112,21 @@ describe("websocket yaml", () => {
     const text = serializeWebSocket(doc);
     expect(fileKind(text)).toBe("websocket");
     expect(parseWebSocket(text)).toEqual(doc);
+  });
+});
+
+describe("object parsers", () => {
+  it("toRequest fills defaults from a partial object", () => {
+    const r = toRequest({ name: "A", method: "post", url: "http://x" });
+    expect(r).toEqual({ ...emptyRequest("A"), method: "POST", url: "http://x" });
+  });
+
+  it("toCollection keeps secret variable values (unlike serializeCollection)", () => {
+    const c = toCollection({ name: "C", variables: [{ key: "t", value: "s3", secret: true }] });
+    expect(c.variables[0]).toEqual({ key: "t", value: "s3", enabled: true, secret: true });
+  });
+
+  it("toWebSocket ignores non-object input", () => {
+    expect(toWebSocket("nope").name).toBe("WebSocket");
   });
 });
