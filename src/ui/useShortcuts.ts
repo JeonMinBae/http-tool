@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { closeTab, newUntitledRequest, saveActiveTab } from "./actions";
 import { useTabs } from "../state/tabs";
+import { openCommandPalette } from "./search/CommandPalette";
 
 export const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
@@ -18,6 +19,9 @@ export function useShortcuts() {
       } else if (key === "n" && !e.shiftKey) {
         e.preventDefault();
         newUntitledRequest();
+      } else if (key === "k") {
+        e.preventDefault();
+        openCommandPalette();
       } else if (key === "w") {
         e.preventDefault();
         const id = useTabs.getState().activeId;
