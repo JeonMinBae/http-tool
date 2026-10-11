@@ -10,20 +10,32 @@ const STRING_FORMATS: Record<string, string> = {
   uri: "https://example.com",
 };
 
-/** example → default → const → enum → type-based dummy. `stack` holds $refs being expanded (cycle guard). */
-export function sampleFromSchema(schema: unknown, r: RefResolver, stack: string[] = [], depth = 0): unknown {
-  if (!isObj(schema) || depth > MAX_DEPTH) return null;
+/** Upper bound on schema nodes expanded for one sample; wide non-cyclic $ref graphs otherwise blow up. */
+const MAX_NODES = 5000;
+
+/** example → default → const → enum → type-based dummy. */
+export function sampleFromSchema(schema: unknown, r: RefResolver): unknown {
+  const budget = { left: MAX_NODES };
+  const out = sample(schema, r, [], 0, budget);
+  if (budget.left < 0) r.warnings.add("Some examples were cut short because their schemas are very large.");
+  return out;
+}
+
+/** `stack` holds $refs being expanded (cycle guard). */
+function sample(schema: unknown, r: RefResolver, stack: string[], depth: number, budget: { left: number }): unknown {
+  if (!isObj(schema) || depth > MAX_DEPTH || --budget.left < 0) return null;
   if (typeof schema.$ref === "string") {
     if (stack.includes(schema.$ref)) return null;
-    return sampleFromSchema(r.deref(schema), r, [...stack, schema.$ref], depth + 1);
+    return sample(r.deref(schema), r, [...stack, schema.$ref], depth + 1, budget);
   }
   if ("example" in schema) return schema.example;
   if (Array.isArray(schema.examples) && schema.examples.length) return schema.examples[0];
   if ("default" in schema) return schema.default;
   if ("const" in schema) return schema.const;
   if (Array.isArray(schema.enum) && schema.enum.length) return schema.enum[0];
-  const next = (s: unknown) => sampleFromSchema(s, r, stack, depth + 1);
-  if (Array.isArray(schema.allOf)) return Object.assign({}, ...schema.allOf.map(next).filter(isObj));
+  const next = (s: unknown) => sample(s, r, stack, depth + 1, budget);
+  // fromEntries defines keys, so a "__proto__" key from the document cannot swap the prototype.
+  if (Array.isArray(schema.allOf)) return Object.fromEntries(schema.allOf.map(next).filter(isObj).flatMap((o) => Object.entries(o)));
   const alt = arr(schema.oneOf)[0] ?? arr(schema.anyOf)[0];
   if (alt !== undefined) return next(alt);
   const type = Array.isArray(schema.type) ? schema.type.find((t) => t !== "null") : schema.type;

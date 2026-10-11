@@ -1,6 +1,6 @@
 import { parse } from "yaml";
 import { isObj } from "../yaml";
-import { filePathWarnings, type ImportPlan } from "./model";
+import { filePathWarnings, scriptWarnings, type ImportPlan } from "./model";
 import { NATIVE_FORMAT, parseNative } from "./native";
 import { importOpenApi } from "./openapi/import";
 
@@ -10,7 +10,7 @@ const UNRECOGNIZED = "Unrecognized format: expected an HTTP Tool export or an Op
 export function detectImport(text: string): ImportPlan {
   let data: unknown;
   try {
-    data = parse(text);
+    data = parseText(text);
   } catch (e) {
     throw new Error(`Not valid JSON or YAML: ${e instanceof Error ? e.message : String(e)}`);
   }
@@ -22,5 +22,17 @@ export function detectImport(text: string): ImportPlan {
     plan = importOpenApi(data);
   } else if ("swagger" in data) throw new Error("Swagger 2.0 is not supported. Convert it to OpenAPI 3.x first.");
   else throw new Error(UNRECOGNIZED);
-  return { ...plan, warnings: [...plan.warnings, ...filePathWarnings(plan.items)] };
+  return { ...plan, warnings: [...plan.warnings, ...scriptWarnings(plan), ...filePathWarnings(plan.items)] };
+}
+
+/** JSON.parse is much faster than the YAML parser on large specs; YAML is the fallback. */
+function parseText(text: string): unknown {
+  if (/^\s*[{[]/.test(text)) {
+    try {
+      return JSON.parse(text);
+    } catch {
+      /* not strict JSON (e.g. YAML flow mapping) */
+    }
+  }
+  return parse(text);
 }

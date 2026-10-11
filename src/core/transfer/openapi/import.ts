@@ -10,7 +10,10 @@ import { exampleOf, toText } from "./sample";
 type Vars = Map<string, Variable>;
 
 const addVar = (vars: Vars, key: string, value: string, secret = false) => {
-  if (!vars.has(key)) vars.set(key, { key, value, enabled: true, secret });
+  const existing = vars.get(key);
+  // A path parameter may already use a credential's name; the variable must still be stored as a secret.
+  if (existing) existing.secret ||= secret;
+  else vars.set(key, { key, value, enabled: true, secret });
 };
 
 interface Ctx {
@@ -102,7 +105,9 @@ function buildRequest(path: string, method: string, op: Obj, pathParams: unknown
   const { body, contentType } = bodyFromRequestBody(ctx.r.deref(op.requestBody), ctx.r, ctx.warnings, label);
   if (contentType) headers.push({ key: "Content-Type", value: contentType, enabled: true });
   const opAuth = op.security === undefined ? null : authFromSecurity(op.security, ctx.schemes, ctx.r, ctx.vars, ctx.warnings);
-  const url = `{{baseUrl}}${path.replace(/\{([^}]+)\}/g, "{{$1}}")}`;
+  // A key like "@evil.example/x" would otherwise move the request to another host.
+  const rooted = path.startsWith("/") ? path : `/${path}`;
+  const url = `{{baseUrl}}${rooted.replace(/\{([^}]+)\}/g, "{{$1}}")}`;
   return {
     ...emptyRequest(str(op.summary) || str(op.operationId) || label),
     method: method.toUpperCase() as HttpRequestDoc["method"],

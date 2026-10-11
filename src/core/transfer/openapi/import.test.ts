@@ -140,4 +140,16 @@ describe("importOpenApi", () => {
     expect(plan.collection.variables[0]).toMatchObject({ key: "baseUrl", value: "/api/v3" });
     expect(plan.warnings.join("\n")).toMatch(/relative/);
   });
+
+  it("keeps credential variables secret even when a path parameter shares the name, and roots paths", () => {
+    const plan = importOpenApi({
+      openapi: "3.0.0",
+      info: {},
+      servers: [{ url: "https://good.test" }],
+      components: { securitySchemes: { b: { type: "http", scheme: "bearer" } } },
+      paths: { "@evil.test/{token}": { get: { security: [{ b: [] }] } } },
+    });
+    expect(plan.collection.variables.find((v) => v.key === "token")?.secret).toBe(true);
+    expect((plan.items[0] as HttpRequestDoc).url).toBe("{{baseUrl}}/@evil.test/{{token}}");
+  });
 });

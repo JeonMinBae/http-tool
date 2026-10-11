@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyRequest } from "../model";
+import { emptyFolder, emptyRequest } from "../model";
 import { detectImport } from "./detect";
 import { toNative } from "./native";
 
@@ -21,5 +21,14 @@ describe("detectImport", () => {
     expect(() => detectImport("openapi: 4.0.0")).toThrow(/not supported/);
     expect(() => detectImport("just text")).toThrow(/Unrecognized/);
     expect(() => detectImport("{ bad")).toThrow(/Not valid/);
+  });
+
+  it("warns about imported scripts", () => {
+    const text = toNative("folder", [{ ...emptyFolder("F"), scripts: { pre: "pm.x()", post: "" }, items: [emptyRequest("r")] }], undefined, false);
+    expect(detectImport(text).warnings.join()).toMatch(/scripts are included.*"F"/);
+  });
+
+  it("accepts YAML flow mappings that are not strict JSON", () => {
+    expect(detectImport("{openapi: 3.0.0, info: {title: A}, paths: {}}").kind).toBe("collection");
   });
 });

@@ -42,6 +42,7 @@ cURL 변환은 별도 기능이다 → [cURL 변환](curl.md).
 - **컬렉션**(HTTP Tool 컬렉션 JSON, OpenAPI): 이름을 고친 뒤 **Choose location & Import** → 상위 폴더를 고르면 그 안에 새 컬렉션 폴더를 만들고 연다. 같은 이름의 폴더가 있으면 `이름-2`처럼 붙인다. 가져온 비밀 변수 값은 이 컴퓨터의 비밀 저장소에 들어간다.
 - **폴더·요청**(폴더·요청 단위로 내보낸 JSON): 열린 컬렉션이나 폴더를 골라 그 끝에 추가한다. 같은 이름이 있으면 `Get user (2)`처럼 이름을 바꿔 추가하고 기존 항목은 건드리지 않는다.
 - 파일 경로가 들어 있는 요청은 다른 컴퓨터에서 파일이 없을 수 있다고 경고한다.
+- Pre/Post 스크립트가 들어 있으면 요청을 보낼 때 실행된다고 경고한다. 남이 준 파일이면 스크립트를 먼저 확인한다.
 
 ### OpenAPI에서 가져오기
 
@@ -58,7 +59,7 @@ cURL 변환은 별도 기능이다 → [cURL 변환](curl.md).
 
 인증 값은 `{{token}}`, `{{username}}`/`{{password}}`, `{{apiKey}}`, `{{clientId}}`/`{{clientSecret}}` 변수로 넣고 컬렉션 변수로 만든다(token·password·apiKey·clientSecret은 비밀 변수). 지원하는 방식은 HTTP Bearer, HTTP Basic, API Key(header·query), OAuth 2.0(client credentials, authorization code)이다. 그 밖의 방식은 No Auth로 두고 경고한다.
 
-문서 안의 `$ref`(`#/components/...`)는 따라가고, 순환 참조는 끊는다. 다른 파일이나 URL을 가리키는 `$ref`는 빈 schema로 두고 경고한다.
+문서 안의 `$ref`(`#/components/...`)는 따라가고, 순환 참조는 끊는다. schema가 너무 커서 샘플이 지나치게 커지면 일부를 생략하고 경고한다. 다른 파일이나 URL을 가리키는 `$ref`는 빈 schema로 두고 경고한다.
 
 ## 범위 밖
 

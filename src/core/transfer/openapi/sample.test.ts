@@ -42,4 +42,19 @@ describe("openapi samples", () => {
     expect(r.deref({ $ref: "#/nope" })).toEqual({});
     expect([...r.warnings]).toEqual(["External $ref is not supported: other.yaml#/X", "Unresolved $ref: #/nope"]);
   });
+
+  it("caps wide non-cyclic $ref graphs", () => {
+    const wide = (next: string) => ({ type: "object", properties: Object.fromEntries(Array.from({ length: 50 }, (_, i) => [`p${i}`, { $ref: next }])) });
+    const r = new RefResolver({ components: { schemas: { A: wide("#/components/schemas/B"), B: wide("#/components/schemas/C"), C: wide("#/components/schemas/D"), D: { type: "string" } } } });
+    sampleFromSchema({ $ref: "#/components/schemas/A" }, r);
+    expect([...r.warnings].join()).toMatch(/cut short/);
+  });
+
+  it("allOf merge keeps __proto__ as a plain key", () => {
+    const r = new RefResolver(spec);
+    const out = sampleFromSchema({ allOf: [{ example: JSON.parse('{"__proto__":{"polluted":1},"a":1}') }] }, r) as Record<string, unknown>;
+    expect(Object.getPrototypeOf(out)).toBe(Object.prototype);
+    expect((out as { polluted?: number }).polluted).toBeUndefined();
+    expect(out.a).toBe(1);
+  });
 });

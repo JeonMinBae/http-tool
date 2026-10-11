@@ -37,3 +37,19 @@ export function filePathWarnings(items: TransferNode[]): string[] {
   walk(items);
   return out;
 }
+
+/** Imported scripts run automatically when requests are sent; flag them so the user can review first. */
+export function scriptWarnings(plan: ImportPlan): string[] {
+  const names: string[] = [];
+  const has = (s: { pre: string; post: string }) => !!(s.pre.trim() || s.post.trim());
+  if (plan.kind === "collection" && has(plan.collection.scripts)) names.push(`collection "${plan.collection.name}"`);
+  const walk = (nodes: TransferNode[]) => {
+    for (const n of nodes) {
+      if (n.kind === "websocket") continue;
+      if (has(n.scripts)) names.push(`"${n.name}"`);
+      if (n.kind === "folder") walk(n.items);
+    }
+  };
+  walk(plan.items);
+  return names.length ? [`Pre/Post scripts are included and will run when requests are sent: ${names.join(", ")}. Review them before use.`] : [];
+}
