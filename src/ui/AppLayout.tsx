@@ -13,7 +13,7 @@ function StatusBar() {
   const errors = entries.reduce((n, e) => n + e.errors.length, 0);
   return (
     <div className="flex h-6 shrink-0 items-center gap-3 border-t border-line bg-panel px-3 text-[12px] text-muted">
-      <button type="button" className={`flex items-center gap-1 hover:text-fg ${open ? "text-fg" : ""}`} onClick={() => toggle()}>
+      <button type="button" className={`flex items-center gap-1 transition-colors hover:text-fg ${open ? "text-fg" : ""}`} onClick={() => toggle()}>
         <Icon name="terminal" size={12} /> Console
         {errors > 0 && <span className="text-danger">({errors})</span>}
       </button>

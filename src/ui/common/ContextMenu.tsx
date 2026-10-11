@@ -60,7 +60,7 @@ export function ContextMenuHost() {
             key={i}
             type="button"
             disabled={item.disabled}
-            className={`block w-full px-3 py-1 text-left hover:bg-hover disabled:opacity-40 ${item.danger ? "text-danger" : ""}`}
+            className={`block w-full px-3 py-1 text-left transition-colors hover:bg-hover active:bg-selected disabled:opacity-40 ${item.danger ? "text-danger" : ""}`}
             onClick={() => {
               hide();
               item.onSelect();
