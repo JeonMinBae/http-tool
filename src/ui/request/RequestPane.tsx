@@ -1,4 +1,20 @@
-import { useTabs } from "../../state/tabs";
+import type { HttpRequestDoc } from "../../core/model";
+import { useResponses } from "../../state/responses";
+import { useTabs, type Tab } from "../../state/tabs";
+import { Split } from "../common/Split";
+import { ResponseViewer } from "../response/ResponseViewer";
+import { RequestEditor } from "./RequestEditor";
+
+function UnresolvedWarning({ tabId }: { tabId: string }) {
+  // Select the stable array reference; a fresh `?? []` per call makes zustand re-render forever.
+  const unresolved = useResponses((s) => s.byTab[tabId]?.unresolved);
+  if (!unresolved?.length) return null;
+  return (
+    <div className="border-b border-line bg-warn/10 px-3 py-1 text-[12px] text-warn">
+      Unresolved variables: {unresolved.map((u) => `{{${u}}}`).join(", ")}
+    </div>
+  );
+}
 
 export function RequestPane() {
   const tab = useTabs((s) => s.tabs.find((t) => t.id === s.activeId));
@@ -9,5 +25,27 @@ export function RequestPane() {
       </div>
     );
   }
-  return <div className="p-4 text-muted">{tab.draft.name}</div>;
+  if (tab.draft.kind !== "http") return <div className="p-4 text-muted">{tab.draft.name}</div>;
+  const reqTab = tab as Tab<HttpRequestDoc>;
+  return (
+    <Split
+      id="request-response"
+      orientation="vertical"
+      panes={[
+        { id: "request", defaultSize: "50", minSize: 120, children: <RequestEditor key={tab.id} tab={reqTab} /> },
+        {
+          id: "response",
+          minSize: 80,
+          children: (
+            <div className="flex h-full flex-col">
+              <UnresolvedWarning tabId={tab.id} />
+              <div className="min-h-0 flex-1">
+                <ResponseViewer tabId={tab.id} />
+              </div>
+            </div>
+          ),
+        },
+      ]}
+    />
+  );
 }

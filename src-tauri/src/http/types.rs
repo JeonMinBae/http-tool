@@ -76,3 +76,26 @@ pub struct HttpResult {
     pub sent: SentRequest,
     pub redirects: Vec<RedirectHop>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Mirrors the JSON produced by `prepareRequest` in src/core/prepare.ts.
+    #[test]
+    fn deserializes_frontend_prepared_request() {
+        let json = r#"{
+            "method": "POST", "url": "http://a/x",
+            "headers": [["Content-Type", "application/json"], ["X", "1"]],
+            "body": {"type": "form-data", "fields": [{"name": "f", "kind": "file", "value": "/tmp/a"}]},
+            "timeoutMs": 1000, "followRedirects": true, "verifySsl": false,
+            "proxy": {"mode": "manual", "url": "socks5://h:1", "bypass": "localhost"}
+        }"#;
+        let r: PreparedRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(r.headers[1], ("X".to_string(), "1".to_string()));
+        assert!(matches!(r.body, PreparedBody::FormData { .. }));
+        for body in [r#"{"type":"none"}"#, r#"{"type":"text","content":"x"}"#, r#"{"type":"url-encoded","fields":[["a","b"]]}"#, r#"{"type":"binary","path":"/p"}"#] {
+            serde_json::from_str::<PreparedBody>(body).unwrap();
+        }
+    }
+}

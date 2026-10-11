@@ -1,0 +1,55 @@
+import { useCallback } from "react";
+import { executeRequest } from "../../core/execute";
+import { HTTP_METHODS, type HttpMethod, type HttpRequestDoc } from "../../core/model";
+import { syncParamsFromUrl } from "../../core/params";
+import { useResponses } from "../../state/responses";
+import { useTabs, type Tab } from "../../state/tabs";
+import { saveTab } from "../actions";
+import { Button } from "../common/Button";
+import { methodColor } from "../common/methodColor";
+import { CodeEditor } from "../editor/CodeEditor";
+
+export function UrlBar({ tab }: { tab: Tab<HttpRequestDoc> }) {
+  const update = useTabs((s) => s.update);
+  const exec = useResponses((s) => s.byTab[tab.id]);
+  const sending = exec?.status === "sending";
+  const send = useCallback(() => void executeRequest(tab.id), [tab.id]);
+  const d = tab.draft;
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-2">
+      <div className="flex min-w-0 flex-1 items-stretch rounded border border-line bg-elevated">
+        <select
+          className={`mono w-24 shrink-0 cursor-pointer border-r border-line bg-transparent px-2 font-bold outline-none ${methodColor(d.method)}`}
+          value={d.method}
+          onChange={(e) => update<HttpRequestDoc>(tab.id, (x) => ({ ...x, method: e.target.value as HttpMethod }))}
+        >
+          {HTTP_METHODS.map((m) => (
+            <option key={m} value={m} className="text-fg">
+              {m}
+            </option>
+          ))}
+        </select>
+        <div className="min-w-0 flex-1">
+          <CodeEditor
+            singleLine
+            value={d.url}
+            placeholder="Enter URL or paste text"
+            onEnter={send}
+            onChange={(url) => update<HttpRequestDoc>(tab.id, (x) => ({ ...x, url, params: syncParamsFromUrl(url, x.params) }))}
+          />
+        </div>
+      </div>
+      {sending ? (
+        <Button className="w-20" onClick={() => useResponses.getState().cancel(tab.id)}>
+          Cancel
+        </Button>
+      ) : (
+        <Button variant="primary" className="w-20" onClick={send}>
+          Send
+        </Button>
+      )}
+      <Button onClick={() => void saveTab(tab.id)}>Save</Button>
+    </div>
+  );
+}
