@@ -15,7 +15,7 @@ cURL 변환은 별도 기능이다 → [cURL 변환](curl.md).
 
 - 내보내는 내용은 디스크에 저장된 상태다. 열린 탭의 저장하지 않은 변경은 들어가지 않는다.
 - **HTTP Tool JSON**은 요청, WebSocket, 폴더, 컬렉션(auth, scripts, variables)을 그대로 담는다. 환경과 전역 변수는 담지 않는다.
-- **Include secrets**(기본 꺼짐)를 끄면 비밀 변수 값과 인증 정보(Bearer token, Basic password, API Key 값, OAuth 2.0 client secret)를 비운다. 값이 `{{변수}}` 참조면 그대로 둔다. 이 옵션은 HTTP Tool JSON에만 있다.
+- **Include secrets**(기본 꺼짐)를 끄면 비밀 변수 값과 인증 정보(Bearer token, Basic password, API Key 값, OAuth 2.0 client secret)를 비운다. 값이 `{{변수}}` 참조면 그대로 둔다. 이 옵션은 HTTP Tool JSON에만 있다. Headers·Cookies에 직접 넣은 값(이름에 auth·token·key·secret·password·session·cookie가 들어간 헤더, 모든 쿠키)은 비우지 않고 대화상자에 경고로 알려준다.
 - binary 바디와 form-data 파일 필드는 파일 경로만 담고 파일 내용은 담지 않는다.
 
 ### OpenAPI로 내보내기

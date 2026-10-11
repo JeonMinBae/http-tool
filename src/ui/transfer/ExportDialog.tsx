@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { LoadedCollection, TreeNode } from "../../core/collectionRepo";
 import { fromTree } from "../../core/transfer/model";
 import { toNative, type NativeScope } from "../../core/transfer/native";
+import { unredactedCredentialWarnings } from "../../core/transfer/redact";
 import { serializeOpenApi, toOpenApi } from "../../core/transfer/openapi/export";
 import { exportToFile } from "../actions";
 import { Button } from "../common/Button";
@@ -23,6 +24,10 @@ function ExportBody({ col, node, close }: { col: LoadedCollection; node?: TreeNo
   const openapi = useMemo(
     () => (format === "openapi" ? toOpenApi({ title: name, collection: col.doc, items }) : null),
     [format, name, col.doc, items],
+  );
+  const plainCredentials = useMemo(
+    () => (format === "native" && !includeSecrets ? unredactedCredentialWarnings(items) : []),
+    [format, includeSecrets, items],
   );
 
   const save = async () => {
@@ -79,6 +84,16 @@ function ExportBody({ col, node, close }: { col: LoadedCollection; node?: TreeNo
               ? "Secret variable values and auth credentials are written as plain text."
               : "Secret variable values and literal auth credentials are left empty. {{variable}} references are kept."}
           </p>
+          {plainCredentials.length > 0 && (
+            <>
+              <p className="mt-2 text-[12px] text-warn">Only the Auth tab is cleared. These values from Headers / Cookies stay in the file:</p>
+              <ul className="mt-1 max-h-48 list-disc overflow-auto pl-5 text-[12px] text-warn">
+                {plainCredentials.map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
+            </>
+          )}
         </>
       ) : (
         <>

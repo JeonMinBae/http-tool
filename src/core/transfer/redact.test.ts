@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { emptyFolder, emptyRequest, type HttpRequestDoc } from "../model";
-import { redactAuth, redactNodes, redactVariables } from "./redact";
+import { emptyFolder, emptyRequest, emptyWebSocket, type HttpRequestDoc } from "../model";
+import { redactAuth, redactNodes, redactVariables, unredactedCredentialWarnings } from "./redact";
 
 describe("redact", () => {
   it("blanks literal credentials but keeps variable references", () => {
@@ -22,5 +22,22 @@ describe("redact", () => {
       { key: "b", value: "2", enabled: true, secret: true },
     ]);
     expect(vars.map((v) => v.value)).toEqual(["1", ""]);
+  });
+
+  it("warns about literal credentials outside the Auth tab", () => {
+    const req: HttpRequestDoc = {
+      ...emptyRequest("r"),
+      headers: [
+        { key: "Authorization", value: "Bearer abc", enabled: true },
+        { key: "X-Api-Key", value: "{{key}}", enabled: true },
+        { key: "Accept", value: "application/json", enabled: true },
+      ],
+      cookies: [{ key: "sid", value: "1", enabled: true }],
+    };
+    const ws = { ...emptyWebSocket("w"), headers: [{ key: "X-Token", value: "t", enabled: true }] };
+    expect(unredactedCredentialWarnings([{ ...emptyFolder("f"), items: [req] }, ws])).toEqual([
+      '"r": header Authorization, cookie sid will be exported as plain text.',
+      '"w": header X-Token will be exported as plain text.',
+    ]);
   });
 });

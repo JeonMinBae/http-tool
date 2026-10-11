@@ -29,3 +29,28 @@ export function redactNodes(items: TransferNode[]): TransferNode[] {
     return n;
   });
 }
+
+const SENSITIVE_NAME = /auth|token|key|secret|password|session|cookie/i;
+
+/**
+ * Credentials typed outside the Auth tab (sensitive-looking headers, any cookie) are not redacted;
+ * lists them so the export dialog can warn. `{{var}}` references are not reported.
+ */
+export function unredactedCredentialWarnings(items: TransferNode[]): string[] {
+  const out: string[] = [];
+  const walk = (nodes: TransferNode[]) => {
+    for (const n of nodes) {
+      if (n.kind === "folder") {
+        walk(n.items);
+        continue;
+      }
+      const literal = (kv: { value: string }) => kv.value !== "" && !isVarRef(kv.value);
+      const headers = n.headers.filter((h) => SENSITIVE_NAME.test(h.key) && literal(h)).map((h) => `header ${h.key}`);
+      const cookies = n.kind === "http" ? n.cookies.filter((c) => c.key && literal(c)).map((c) => `cookie ${c.key}`) : [];
+      const found = [...headers, ...cookies];
+      if (found.length) out.push(`"${n.name}": ${found.join(", ")} will be exported as plain text.`);
+    }
+  };
+  walk(items);
+  return out;
+}
