@@ -2,5 +2,68 @@
 
 @custom-variant dark (@media (prefers-color-scheme: dark));
 
-html, body, #root { height: 100%; margin: 0; }
-body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 13px; }
+:root {
+  --bg: #ffffff;
+  --panel: #f7f7f8;
+  --elevated: #ffffff;
+  --line: #e3e3e6;
+  --fg: #1f1f23;
+  --muted: #6e6e78;
+  --hover: #ececef;
+  --selected: #e4e4e8;
+  --accent: #ff6c37;
+  --accent-fg: #ffffff;
+  --danger: #d93a3a;
+  --ok: #16a34a;
+  --warn: #c27c0e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1c1f;
+    --panel: #232327;
+    --elevated: #2b2b30;
+    --line: #36363c;
+    --fg: #e6e6ea;
+    --muted: #9a9aa3;
+    --hover: #2f2f35;
+    --selected: #393940;
+    --accent: #ff7a45;
+    --accent-fg: #ffffff;
+    --danger: #f06262;
+    --ok: #4ade80;
+    --warn: #f0b33a;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-elevated: var(--elevated);
+  --color-line: var(--line);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-hover: var(--hover);
+  --color-selected: var(--selected);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-danger: var(--danger);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+}
+
+html, body, #root { height: 100%; margin: 0; overflow: hidden; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 13px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+input, textarea, select, button { font: inherit; color: inherit; }
+input, textarea, .cm-editor { user-select: text; -webkit-user-select: text; }
+:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }

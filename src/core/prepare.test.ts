@@ -15,6 +15,7 @@ describe("buildChain", () => {
       root: "/c",
       doc: emptyCollection("c"),
       errors: [],
+      hasCollectionFile: true,
       children: [
         { type: "folder", path: "/c/a", doc: emptyFolder("a"), children: [
           { type: "folder", path: "/c/a/b", doc: emptyFolder("b"), children: [{ type: "request", path: "/c/a/b/r.yaml", doc: r }] },

@@ -24,6 +24,8 @@ export interface LoadedCollection {
   doc: CollectionDoc;
   children: TreeNode[];
   errors: LoadError[];
+  /** False when the directory has no collection.yaml yet. */
+  hasCollectionFile: boolean;
 }
 
 export const FOLDER_FILE = "_folder.yaml";
@@ -78,7 +80,7 @@ export class CollectionRepo {
         errors.push({ path: colFile.path, message: String(e) });
       }
     }
-    return { root: tree.path, doc, children: this.convert(tree, errors), errors };
+    return { root: tree.path, doc, children: this.convert(tree, errors), errors, hasCollectionFile: !!colFile };
   }
 
   private convert(dir: FsEntry, errors: LoadError[]): TreeNode[] {

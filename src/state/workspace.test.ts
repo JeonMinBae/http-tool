@@ -22,6 +22,7 @@ function fakeRepo(existing: string[]): CollectionRepo {
     doc: { ...emptyCollection("c"), variables: [{ key: "token", value: "", enabled: true, secret: true }] },
     children: [],
     errors: [],
+    hasCollectionFile: true,
   });
   return {
     register: vi.fn(async (p: string) => {
