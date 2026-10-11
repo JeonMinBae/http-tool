@@ -1,10 +1,13 @@
+import { useEffect, useRef, useState } from "react";
 import { useResponses } from "../../state/responses";
 import { isDirty, useTabs, type Tab } from "../../state/tabs";
 import { closeTab, newUntitledRequest } from "../actions";
 import { showMenu } from "../common/ContextMenu";
 import { Icon } from "../common/icons";
 import { Spinner } from "../common/Spinner";
+import { useTransientFlag } from "../common/useTransientFlag";
 import { methodColor, methodLabel } from "../common/methodColor";
+import { mergeExiting, type Exiting } from "./exiting";
 
 function TabLabel({ tab }: { tab: Tab }) {
   const d = tab.draft;
@@ -14,14 +17,87 @@ function TabLabel({ tab }: { tab: Tab }) {
   return <Icon name={d.kind === "folder" ? "folder" : "collection"} size={12} className="text-muted" />;
 }
 
+const TAB_BASE = "flex max-w-56 shrink-0 items-center gap-1.5 overflow-hidden whitespace-nowrap border-r border-line px-3";
+/** Upper bound for the tab-out animation (120ms) before a closed tab is removed anyway. */
+const TAB_OUT_FALLBACK_MS = 300;
+
+/** Method label, or a spinner while the tab's request is in flight. */
+function TabIcon({ tab }: { tab: Tab }) {
+  const sending = useResponses((s) => s.byTab[tab.id]?.status === "sending");
+  return sending ? <Spinner size={10} className="text-accent" /> : <TabLabel tab={tab} />;
+}
+
+/** Store tabs plus recently closed ones, kept until their exit animation ends. */
+function useExitingTabs(tabs: Tab[]) {
+  const [list, setList] = useState<Exiting<Tab>[]>(() => tabs.map((item) => ({ item, exiting: false })));
+  const [seen, setSeen] = useState(tabs);
+  if (seen !== tabs) {
+    setSeen(tabs);
+    setList(mergeExiting(list, tabs, (t) => t.id));
+  }
+  const drop = (id: string) => setList((l) => l.filter((e) => !(e.exiting && e.item.id === id)));
+  return [list, drop] as const;
+}
+
+/** A closed tab shrinking away; it is already gone from the store. */
+function ClosingTab({ tab, onDone }: { tab: Tab; onDone: () => void }) {
+  const done = useRef(onDone);
+  done.current = onDone;
+  // Fallback in case animationend never fires (e.g. hidden window).
+  useEffect(() => {
+    const t = setTimeout(() => done.current(), TAB_OUT_FALLBACK_MS);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div
+      onAnimationEnd={(e) => e.target === e.currentTarget && onDone()}
+      className={`${TAB_BASE} pointer-events-none animate-tab-out text-muted`}
+    >
+      <TabLabel tab={tab} />
+      <span className="truncate">{tab.draft.name}</span>
+    </div>
+  );
+}
+
+function TabCloseButton({ tab }: { tab: Tab }) {
+  const justSaved = useTransientFlag(tab.savedAt, 1200);
+  // Shown in place of the close icon until hover: unsaved dot, or a brief check after saving.
+  const marker = isDirty(tab) ? (
+    <span className="text-[10px] text-accent group-hover:hidden">●</span>
+  ) : justSaved ? (
+    <Icon name="check" size={10} className="animate-fade-in text-ok group-hover:hidden" />
+  ) : null;
+  return (
+    <button
+      type="button"
+      className="ml-1 flex h-4 w-4 shrink-0 items-center justify-center rounded hover:bg-selected"
+      onClick={(e) => {
+        e.stopPropagation();
+        void closeTab(tab.id);
+      }}
+      title="Close"
+    >
+      {marker ? (
+        <>
+          {marker}
+          <Icon name="close" size={10} className="hidden group-hover:block" />
+        </>
+      ) : (
+        <Icon name="close" size={10} className="invisible group-hover:visible" />
+      )}
+    </button>
+  );
+}
+
 export function TabBar() {
   const { tabs, activeId, activate } = useTabs();
-  const responses = useResponses((s) => s.byTab);
+  const [list, drop] = useExitingTabs(tabs);
   return (
     <div className="flex h-9 shrink-0 items-stretch overflow-x-auto border-b border-line bg-panel">
-      {tabs.map((t) => {
-        const dirty = isDirty(t);
-        return (
+      {list.map(({ item: t, exiting }) =>
+        exiting ? (
+          <ClosingTab key={t.id} tab={t} onDone={() => drop(t.id)} />
+        ) : (
           <div
             key={t.id}
             onClick={() => activate(t.id)}
@@ -38,34 +114,17 @@ export function TabBar() {
               ])
             }
             title={t.path ?? "Unsaved request"}
-            className={`group flex max-w-56 shrink-0 cursor-pointer items-center gap-1.5 border-r border-line px-3 ${
-              t.id === activeId ? "bg-bg shadow-[inset_0_2px_0_var(--accent)]" : "text-muted hover:bg-hover"
+            className={`${TAB_BASE} group animate-tab-in cursor-pointer transition-colors ${
+              t.id === activeId ? "bg-bg shadow-[inset_0_2px_0_var(--accent)]" : "text-muted hover:bg-hover active:bg-selected"
             }`}
           >
-            {responses[t.id]?.status === "sending" ? <Spinner size={10} className="text-accent" /> : <TabLabel tab={t} />}
+            <TabIcon tab={t} />
             <span className={`truncate ${t.path ? "" : "italic"}`}>{t.draft.name}</span>
-            <button
-              type="button"
-              className="ml-1 flex h-4 w-4 items-center justify-center rounded hover:bg-selected"
-              onClick={(e) => {
-                e.stopPropagation();
-                void closeTab(t.id);
-              }}
-              title="Close"
-            >
-              {dirty ? (
-                <>
-                  <span className="text-[10px] text-accent group-hover:hidden">●</span>
-                  <Icon name="close" size={10} className="hidden group-hover:block" />
-                </>
-              ) : (
-                <Icon name="close" size={10} className="invisible group-hover:visible" />
-              )}
-            </button>
+            <TabCloseButton tab={t} />
           </div>
-        );
-      })}
-      <button type="button" className="px-3 text-muted hover:text-fg" onClick={() => newUntitledRequest()} title="New request">
+        ),
+      )}
+      <button type="button" className="px-3 text-muted transition-colors hover:text-fg" onClick={() => newUntitledRequest()} title="New request">
         <Icon name="plus" />
       </button>
     </div>

@@ -23,6 +23,13 @@ describe("tabs store", () => {
     expect(isDirty(s().tabs[0])).toBe(false);
   });
 
+  it("records savedAt on save", () => {
+    const id = s().open("/c", "/c/a.yaml", emptyRequest("A"));
+    expect(s().tabs[0].savedAt).toBeUndefined();
+    s().markSaved(id, "/c", "/c/a.yaml");
+    expect(s().tabs[0].savedAt).toEqual(expect.any(Number));
+  });
+
   it("closing the active tab activates its neighbour", () => {
     const a = s().open(null, null, emptyRequest("A"));
     const b = s().open(null, null, emptyRequest("B"));
