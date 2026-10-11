@@ -1,0 +1,157 @@
+import { parse, stringify } from "yaml";
+import {
+  HTTP_METHODS,
+  type Auth,
+  type Body,
+  type CollectionDoc,
+  type FolderDoc,
+  type FormField,
+  type HttpMethod,
+  type HttpRequestDoc,
+  type KeyValue,
+  type RawLanguage,
+  type RequestSettings,
+  type Scripts,
+  type Variable,
+} from "./model";
+
+type Obj = Record<string, unknown>;
+
+const STRINGIFY_OPTIONS = { blockQuote: "literal", lineWidth: 0 } as const;
+
+const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
+const str = (v: unknown, d = ""): string => (typeof v === "string" ? v : typeof v === "number" ? String(v) : d);
+const bool = (v: unknown, d: boolean): boolean => (typeof v === "boolean" ? v : d);
+const num = (v: unknown, d: number): number => (typeof v === "number" && Number.isFinite(v) ? v : d);
+const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+
+function load(text: string, kind: string): Obj {
+  const data: unknown = parse(text);
+  if (!isObj(data)) throw new Error(`expected a ${kind} document`);
+  if (data.kind !== kind) throw new Error(`expected kind "${kind}" but got "${String(data.kind)}"`);
+  return data;
+}
+
+function keyValue(v: unknown): KeyValue {
+  const o = isObj(v) ? v : {};
+  return { key: str(o.key), value: str(o.value), enabled: bool(o.enabled, true) };
+}
+
+function formField(v: unknown): FormField {
+  const o = isObj(v) ? v : {};
+  return { ...keyValue(o), kind: o.kind === "file" ? "file" : "text" };
+}
+
+function body(v: unknown): Body {
+  const o = isObj(v) ? v : {};
+  switch (o.type) {
+    case "raw": {
+      const language = (["json", "text", "xml", "html"] as const).includes(o.language as RawLanguage)
+        ? (o.language as RawLanguage)
+        : "text";
+      return { type: "raw", language, content: str(o.content) };
+    }
+    case "urlencoded":
+      return { type: "urlencoded", fields: arr(o.fields).map(keyValue) };
+    case "form-data":
+      return { type: "form-data", fields: arr(o.fields).map(formField) };
+    case "binary":
+      return { type: "binary", filePath: str(o.filePath) };
+    case "graphql":
+      return { type: "graphql", query: str(o.query), variables: str(o.variables) };
+    default:
+      return { type: "none" };
+  }
+}
+
+function auth(v: unknown, fallback: Auth): Auth {
+  const o = isObj(v) ? v : {};
+  switch (o.type) {
+    case "inherit":
+      return { type: "inherit" };
+    case "none":
+      return { type: "none" };
+    case "bearer":
+      return { type: "bearer", token: str(o.token) };
+    case "basic":
+      return { type: "basic", username: str(o.username), password: str(o.password) };
+    case "apikey":
+      return { type: "apikey", key: str(o.key), value: str(o.value), in: o.in === "query" ? "query" : "header" };
+    default:
+      return fallback;
+  }
+}
+
+function scripts(v: unknown): Scripts {
+  const o = isObj(v) ? v : {};
+  return { pre: str(o.pre), post: str(o.post) };
+}
+
+function settings(v: unknown): RequestSettings {
+  const o = isObj(v) ? v : {};
+  const s: RequestSettings = {};
+  if (typeof o.timeoutMs === "number") s.timeoutMs = o.timeoutMs;
+  if (typeof o.followRedirects === "boolean") s.followRedirects = o.followRedirects;
+  if (typeof o.verifySsl === "boolean") s.verifySsl = o.verifySsl;
+  return s;
+}
+
+function method(v: unknown): HttpMethod {
+  const m = str(v, "GET").toUpperCase();
+  return (HTTP_METHODS as readonly string[]).includes(m) ? (m as HttpMethod) : "GET";
+}
+
+export function variable(v: unknown): Variable {
+  const o = isObj(v) ? v : {};
+  return { key: str(o.key), value: str(o.value), enabled: bool(o.enabled, true), secret: bool(o.secret, false) };
+}
+
+export function parseRequest(text: string): HttpRequestDoc {
+  const o = load(text, "http");
+  return {
+    kind: "http",
+    name: str(o.name, "Untitled"),
+    seq: num(o.seq, 0),
+    method: method(o.method),
+    url: str(o.url),
+    params: arr(o.params).map(keyValue),
+    headers: arr(o.headers).map(keyValue),
+    cookies: arr(o.cookies).map(keyValue),
+    body: body(o.body),
+    auth: auth(o.auth, { type: "inherit" }),
+    scripts: scripts(o.scripts),
+    settings: settings(o.settings),
+  };
+}
+
+export function parseFolder(text: string): FolderDoc {
+  const o = load(text, "folder");
+  return {
+    kind: "folder",
+    name: str(o.name, "Folder"),
+    seq: num(o.seq, 0),
+    auth: auth(o.auth, { type: "inherit" }),
+    scripts: scripts(o.scripts),
+  };
+}
+
+export function parseCollection(text: string): CollectionDoc {
+  const o = load(text, "collection");
+  return {
+    kind: "collection",
+    name: str(o.name, "Collection"),
+    auth: auth(o.auth, { type: "none" }),
+    scripts: scripts(o.scripts),
+    variables: arr(o.variables).map(variable),
+  };
+}
+
+export const serializeRequest = (doc: HttpRequestDoc): string => stringify(doc, STRINGIFY_OPTIONS);
+
+export const serializeFolder = (doc: FolderDoc): string => stringify(doc, STRINGIFY_OPTIONS);
+
+/** Secret variable values are never written to the collection file. */
+export function serializeCollection(doc: CollectionDoc): string {
+  const variables = doc.variables.map((v) => (v.secret ? { ...v, value: "" } : v));
+  return stringify({ ...doc, variables }, STRINGIFY_OPTIONS);
+}
