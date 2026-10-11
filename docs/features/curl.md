@@ -37,6 +37,7 @@ URL 바의 **Export as cURL** 버튼으로 연다.
 - 쿠키 저장소의 쿠키와 앱이 자동으로 붙이는 `User-Agent`·`Accept`는 포함하지 않는다. 실제로 나간 요청 전체는 응답의 Request 탭에서 본다.
 - 프록시 설정이 있으면 `-x`, `--noproxy`가 붙는다.
 - 비밀 변수 값도 평문으로 들어가니 공유할 때 주의한다.
+- **Copy**를 누르면 버튼이 잠깐 체크와 Copied로 바뀌었다가 돌아온다. 복사에 실패하면 토스트로 알린다.
 - 셸을 고를 수 있고, 고른 셸은 기억된다 (처음에는 macOS는 bash, Windows는 cmd).
   - **bash** — macOS, Linux, Git Bash
   - **cmd** — Windows 명령 프롬프트

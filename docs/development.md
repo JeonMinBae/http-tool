@@ -40,10 +40,11 @@
 
 - `src/core/**/*.test.ts` — 변수 치환, YAML 변환, 요청 준비, 인증, OAuth(PKCE 포함), cURL 변환, 러너, SSE 파서, 검색 등 순수 로직
 - `src/script/pmApi.test.ts` — `pm` API와 샌드박스 차단
-- `src/state/*.test.ts` — 탭·워크스페이스 상태
+- `src/state/*.test.ts` — 탭·워크스페이스·토스트 상태
+- `src/ui/**/*.test.ts` — 화면에서 분리한 순수 로직(응답 도착 판정, 닫히는 탭 병합)
 - `src-tauri/src/**` — 경로 차단, 앱 데이터 이름 검증, HTTP 전송·리다이렉트·쿠키, 히스토리, OAuth 리스너, WebSocket
 
-UI는 자동 테스트가 없다. 화면을 바꿨다면 `npm run tauri dev`로 직접 확인한다.
+컴포넌트 렌더링과 애니메이션은 자동 테스트가 없다. 화면을 바꿨다면 `npm run tauri dev`로 직접 확인한다.
 
 ## 코드 규칙
 
