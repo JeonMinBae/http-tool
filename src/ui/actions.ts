@@ -1,6 +1,7 @@
 import { open as openDialogPicker, save as saveDialogPicker } from "@tauri-apps/plugin-dialog";
 import { fileApi } from "../ipc";
-import type { TreeNode } from "../core/collectionRepo";
+import { sanitizeName, type TreeNode } from "../core/collectionRepo";
+import type { ImportPlan, TransferNode } from "../core/transfer/model";
 import { emptyRequest, emptyWebSocket, type HttpRequestDoc } from "../core/model";
 import { samePath } from "../core/path";
 import { useStreams } from "../state/streams";
@@ -44,6 +45,33 @@ export async function exportToFile(
   if (!path) return false;
   const done = await guard("Could not export", async () => {
     await fileApi.saveText(path, render(path));
+    return true;
+  });
+  return done ?? false;
+}
+
+/** Creates a new collection folder under a user-picked directory and writes the plan into it. */
+export async function importAsCollection(plan: Extract<ImportPlan, { kind: "collection" }>, name: string): Promise<boolean> {
+  const parent = await openDialogPicker({ directory: true, multiple: false, title: "Choose where to create the collection" });
+  if (typeof parent !== "string") return false;
+  const done = await guard("Could not import", async () => {
+    const dir = await fileApi.createUniqueDir(parent, sanitizeName(name, "collection"));
+    const col = await ws().openCollection(dir);
+    await ws().saveCollectionDoc(col.root, { ...plan.collection, name });
+    await collectionRepo.importItems(col.root, plan.items);
+    useExpanded.getState().expand(col.root);
+    await ws().reload(col.root);
+    return true;
+  });
+  return done ?? false;
+}
+
+/** Adds imported folders/requests to an open collection, after the items already in `dir`. */
+export async function importIntoFolder(root: string, dir: string, items: TransferNode[]): Promise<boolean> {
+  const done = await guard("Could not import", async () => {
+    await collectionRepo.importItems(dir, items);
+    useExpanded.getState().expand(root, dir);
+    await ws().reload(root);
     return true;
   });
   return done ?? false;
