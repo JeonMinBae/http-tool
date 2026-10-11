@@ -1,4 +1,5 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
+import { utf8ToBase64 } from "./core/encoding";
 
 export interface FsEntry {
   name: string;
@@ -134,8 +135,13 @@ export const cookieApi = {
   clear: (domain?: string) => invoke<void>("cookie_clear", { domain: domain ?? null }),
 };
 
+/** Files at paths the user picked in a dialog (outside collections). */
 export const fileApi = {
   saveBase64: (path: string, data: string) => invoke<void>("file_save_base64", { path, data }),
+  saveText: (path: string, text: string) => invoke<void>("file_save_base64", { path, data: utf8ToBase64(text) }),
+  readText: (path: string) => invoke<string>("file_read_text", { path }),
+  /** Creates a new folder (suffixed when taken) for an imported collection; returns its path. */
+  createUniqueDir: (parent: string, name: string) => invoke<string>("dir_create_unique", { parent, name }),
 };
 
 export interface HistorySummary {

@@ -47,6 +47,8 @@ pub fn run() {
             ws::ws_send,
             ws::ws_close,
             files::file_save_base64,
+            files::file_read_text,
+            files::dir_create_unique,
             fs_commands::collection_register,
             fs_commands::collection_unregister,
             fs_commands::fs_read_tree,
