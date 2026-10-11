@@ -45,3 +45,76 @@ export const appDataApi: AppDataApi = {
   read: (name) => invoke("appdata_read", { name }),
   write: (name, value) => invoke("appdata_write", { name, value }),
 };
+
+export type PreparedBody =
+  | { type: "none" }
+  | { type: "text"; content: string }
+  | { type: "url-encoded"; fields: [string, string][] }
+  | { type: "form-data"; fields: { name: string; kind: "text" | "file"; value: string }[] }
+  | { type: "binary"; path: string };
+
+export interface ProxyConfig {
+  mode: "system" | "none" | "manual";
+  url: string;
+  bypass: string;
+}
+
+export interface PreparedRequest {
+  method: string;
+  url: string;
+  headers: [string, string][];
+  body: PreparedBody;
+  timeoutMs: number;
+  followRedirects: boolean;
+  verifySsl: boolean;
+  proxy: ProxyConfig;
+}
+
+export interface SentRequest {
+  method: string;
+  url: string;
+  headers: [string, string][];
+  bodyPreview: string | null;
+}
+
+export interface RedirectHop {
+  url: string;
+  status: number;
+  method: string;
+}
+
+export interface HttpResult {
+  status: number;
+  statusText: string;
+  httpVersion: string;
+  headers: [string, string][];
+  bodyBase64: string;
+  isText: boolean;
+  size: number;
+  elapsedMs: number;
+  sent: SentRequest;
+  redirects: RedirectHop[];
+}
+
+export interface CookieInfo {
+  domain: string;
+  hostOnly: boolean;
+  path: string;
+  name: string;
+  value: string;
+  /** epoch ms; null for session cookies */
+  expires: number | null;
+  httpOnly: boolean;
+  secure: boolean;
+}
+
+export const httpApi = {
+  send: (request: PreparedRequest) => invoke<HttpResult>("http_send", { request }),
+};
+
+export const cookieApi = {
+  list: () => invoke<CookieInfo[]>("cookie_list"),
+  upsert: (cookie: CookieInfo) => invoke<void>("cookie_upsert", { cookie }),
+  remove: (domain: string, path: string, name: string) => invoke<void>("cookie_delete", { domain, path, name }),
+  clear: (domain?: string) => invoke<void>("cookie_clear", { domain: domain ?? null }),
+};
