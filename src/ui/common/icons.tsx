@@ -2,7 +2,6 @@ import type { SVGProps } from "react";
 
 const PATHS = {
   chevronRight: "M9 6l6 6-6 6",
-  chevronDown: "M6 9l6 6 6-6",
   folder: "M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z",
   collection: "M4 5h16v4H4zM4 11h16v8H4z",
   plus: "M12 5v14M5 12h14",
