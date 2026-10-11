@@ -6,6 +6,7 @@ import { useWorkspace } from "./state/workspace";
 import { AppLayout } from "./ui/AppLayout";
 import { ContextMenuHost } from "./ui/common/ContextMenu";
 import { DialogHost } from "./ui/common/dialogs";
+import { ToastHost } from "./ui/common/Toasts";
 import { useShortcuts } from "./ui/useShortcuts";
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
       <AppLayout />
       <ContextMenuHost />
       <DialogHost />
+      <ToastHost />
     </>
   );
 }
