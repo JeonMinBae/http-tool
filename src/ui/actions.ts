@@ -1,4 +1,5 @@
-import { open as openDialogPicker } from "@tauri-apps/plugin-dialog";
+import { open as openDialogPicker, save as saveDialogPicker } from "@tauri-apps/plugin-dialog";
+import { fileApi } from "../ipc";
 import type { TreeNode } from "../core/collectionRepo";
 import { emptyRequest, emptyWebSocket, type HttpRequestDoc } from "../core/model";
 import { samePath } from "../core/path";
@@ -31,6 +32,21 @@ export async function openCollectionFromDialog() {
     useExpanded.getState().expand(col.root);
     await ws().reload(col.root);
   });
+}
+
+/** Asks for a destination and writes the text `render` builds for that path. Returns false on cancel or error. */
+export async function exportToFile(
+  defaultPath: string,
+  filters: { name: string; extensions: string[] }[],
+  render: (path: string) => string,
+): Promise<boolean> {
+  const path = await saveDialogPicker({ title: "Export", defaultPath, filters });
+  if (!path) return false;
+  const done = await guard("Could not export", async () => {
+    await fileApi.saveText(path, render(path));
+    return true;
+  });
+  return done ?? false;
 }
 
 export async function closeCollection(root: string) {
