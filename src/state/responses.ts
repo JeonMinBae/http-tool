@@ -1,15 +1,16 @@
 import { create } from "zustand";
 import type { HttpResult } from "../ipc";
+import type { TestResult } from "../script/protocol";
 
 export type ExecState =
   | { status: "sending"; requestId: string; startedAt: number; unresolved: string[] }
-  | { status: "done"; requestId: string; result: HttpResult; unresolved: string[]; receivedAt: number }
+  | { status: "done"; requestId: string; result: HttpResult; unresolved: string[]; receivedAt: number; tests?: TestResult[]; scriptError?: string }
   | { status: "error"; requestId: string; error: string; unresolved: string[] };
 
 interface ResponsesState {
   byTab: Record<string, ExecState | undefined>;
   start(tabId: string, requestId: string, unresolved: string[]): void;
-  finish(tabId: string, requestId: string, result: HttpResult): void;
+  finish(tabId: string, requestId: string, result: HttpResult, extra?: { tests?: TestResult[]; scriptError?: string; unresolved?: string[] }): void;
   fail(tabId: string, requestId: string, error: string, unresolved?: string[]): void;
   /** Late results for a cancelled request are ignored because the requestId no longer matches. */
   cancel(tabId: string): void;
@@ -22,10 +23,10 @@ export const useResponses = create<ResponsesState>((set, get) => {
   return {
     byTab: {},
     start: (tabId, requestId, unresolved) => put(tabId, { status: "sending", requestId, startedAt: Date.now(), unresolved }),
-    finish(tabId, requestId, result) {
+    finish(tabId, requestId, result, extra) {
       const prev = get().byTab[tabId];
       if (current(tabId, requestId))
-        put(tabId, { status: "done", requestId, result, unresolved: prev?.unresolved ?? [], receivedAt: Date.now() });
+        put(tabId, { status: "done", requestId, result, receivedAt: Date.now(), ...extra, unresolved: extra?.unresolved ?? prev?.unresolved ?? [] });
     },
     fail(tabId, requestId, error, unresolved) {
       const prev = get().byTab[tabId];

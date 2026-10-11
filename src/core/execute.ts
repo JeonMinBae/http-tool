@@ -1,18 +1,27 @@
 import { httpApi, type HttpResult, type PreparedRequest } from "../ipc";
-import type { HttpRequestDoc } from "./model";
-import { buildChain, prepareRequest } from "./prepare";
-import { buildScopes } from "./variables";
+import { runScript } from "../script/host";
+import type { LogEntry, ScriptInput, ScriptRequest, ScriptResponse, ScriptSendRequest, TestResult } from "../script/protocol";
+import { useConsole } from "../state/console";
 import { useHistory } from "../state/history";
 import { useResponses } from "../state/responses";
 import { useSettings } from "../state/settings";
 import { useTabs } from "../state/tabs";
 import { useVariables } from "../state/variables";
 import { useWorkspace } from "../state/workspace";
+import type { Chain } from "./auth";
+import { base64ToUtf8 } from "./encoding";
+import type { HttpRequestDoc } from "./model";
+import { buildChain, prepareRequest, withScheme } from "./prepare";
+import { applyVarChanges } from "./varChanges";
+import { buildScopes, type VarScopes } from "./variables";
 
 export interface ExecutionOutcome {
   request?: PreparedRequest;
   result?: HttpResult;
   error?: string;
+  tests: TestResult[];
+  scriptError?: string;
+  unresolved: string[];
 }
 
 /** Variable scopes visible to a request in the given collection. */
@@ -22,52 +31,170 @@ export function scopesFor(root: string | null) {
   return buildScopes({ globals: useVariables.getState().globals, environment: env?.variables, collection: col?.doc.variables });
 }
 
-/** Prepares a tab's request exactly as it would be sent (variables, inherited auth, settings). */
+const chainFor = (root: string | null, path: string | null, doc: HttpRequestDoc) =>
+  buildChain(root ? useWorkspace.getState().collectionOf(root) : undefined, path, doc);
+
+/** Prepares a tab's request exactly as it would be sent (variables, inherited auth, settings) — scripts excluded. */
 export function prepareForTab(root: string | null, path: string | null, doc: HttpRequestDoc) {
-  const col = root ? useWorkspace.getState().collectionOf(root) : undefined;
-  return prepareRequest(buildChain(col, path, doc), scopesFor(root), useSettings.getState().settings);
+  return prepareRequest(chainFor(root, path, doc), scopesFor(root), useSettings.getState().settings);
 }
 
-export async function executeRequest(tabId: string): Promise<ExecutionOutcome> {
-  const tab = useTabs.getState().tabs.find((t) => t.id === tabId);
-  if (!tab || tab.draft.kind !== "http") return { error: "not a request tab" };
-  const responses = useResponses.getState();
-  const requestId = crypto.randomUUID();
+const toScriptRequest = (d: HttpRequestDoc): ScriptRequest => ({
+  name: d.name,
+  method: d.method,
+  url: d.url,
+  headers: d.headers.map((h) => ({ ...h })),
+  body: structuredClone(d.body),
+});
 
-  let prepared;
+function toScriptResponse(r: HttpResult): ScriptResponse {
+  return { code: r.status, status: r.statusText, headers: r.headers, body: r.isText ? base64ToUtf8(r.bodyBase64) : "", responseTime: r.elapsedMs, size: r.size };
+}
+
+/** Requests made with pm.sendRequest use the global settings and the cookie jar, but no collection auth. */
+async function scriptSend(req: ScriptSendRequest): Promise<ScriptResponse> {
+  const s = useSettings.getState().settings;
+  const result = await httpApi.send({
+    method: req.method,
+    url: withScheme(req.url),
+    headers: req.headers,
+    body: req.body === undefined ? { type: "none" } : { type: "text", content: req.body },
+    timeoutMs: s.timeoutMs,
+    followRedirects: s.followRedirects,
+    verifySsl: s.verifySsl,
+    proxy: s.proxy,
+  });
+  return toScriptResponse(result);
+}
+
+interface PhaseResult {
+  ok: boolean;
+  scopes: VarScopes;
+  request: ScriptRequest;
+}
+
+async function runPhase(
+  phase: "pre" | "post",
+  chain: Chain,
+  ctx: { scopes: VarScopes; request: ScriptRequest; response?: ScriptResponse; hasEnvironment: boolean },
+  out: { tests: TestResult[]; logs: (LogEntry & { source: string })[]; errors: string[] },
+): Promise<PhaseResult> {
+  let { scopes, request } = ctx;
+  const levels = [chain.collection, ...chain.folders, chain.request];
+  for (const node of levels) {
+    const code = node.scripts[phase];
+    if (!code.trim()) continue;
+    const input: ScriptInput = { phase, code, scopes, request, response: ctx.response, hasEnvironment: ctx.hasEnvironment };
+    const result = await runScript(input, { sendRequest: scriptSend });
+    const source = `${phase === "pre" ? "Pre-request" : "Post-response"} (${node.kind}: ${node.name})`;
+    scopes = result.scopes;
+    request = result.request;
+    out.tests.push(...result.tests);
+    out.logs.push(...result.logs.map((l) => ({ ...l, source })));
+    if (result.error) {
+      out.errors.push(`${source}: ${result.error}`);
+      return { ok: false, scopes, request };
+    }
+  }
+  return { ok: true, scopes, request };
+}
+
+/** Persists environment / collection / global changes made by scripts; local variables are discarded. */
+async function commitVariables(root: string | null, before: VarScopes, after: VarScopes) {
+  const vars = useVariables.getState();
+  const env = vars.activeEnvironment();
+  if (env) {
+    const next = applyVarChanges(env.variables, before.environment, after.environment);
+    if (next) await vars.saveEnvironments(vars.environments.map((e) => (e.id === env.id ? { ...e, variables: next } : e)));
+  }
+  const globals = applyVarChanges(vars.globals, before.global, after.global);
+  if (globals) await vars.saveGlobals(globals);
+  const col = root ? useWorkspace.getState().collectionOf(root) : undefined;
+  if (col) {
+    const next = applyVarChanges(col.doc.variables, before.collection, after.collection);
+    if (next) {
+      await useWorkspace.getState().saveCollectionDoc(col.root, { ...col.doc, variables: next });
+      // Keep an open collection settings tab in sync.
+      useTabs.getState().refreshSaved(col.root, { ...col.doc, variables: next });
+    }
+  }
+}
+
+export interface ExecuteTarget {
+  root: string | null;
+  path: string | null;
+  doc: HttpRequestDoc;
+}
+
+/** Runs pre-request scripts, sends the request, runs post-response scripts and records history/console. */
+export async function executeDoc(target: ExecuteTarget, requestId: string = crypto.randomUUID()): Promise<ExecutionOutcome> {
+  const { root, path, doc } = target;
+  const settings = useSettings.getState().settings;
+  const chain = chainFor(root, path, doc);
+  const initial = scopesFor(root);
+  const hasEnvironment = !!useVariables.getState().activeEnvironment();
+  const out = { tests: [] as TestResult[], logs: [] as (LogEntry & { source: string })[], errors: [] as string[] };
+  const started = Date.now();
+  let prepared: PreparedRequest | undefined;
+  let result: HttpResult | undefined;
+  let error: string | undefined;
+  let unresolved: string[] = [];
+  let scopes = initial;
+
   try {
-    prepared = prepareForTab(tab.root, tab.path, tab.draft);
+    const pre = await runPhase("pre", chain, { scopes, request: toScriptRequest(doc), hasEnvironment }, out);
+    scopes = pre.scopes;
+    if (!pre.ok) throw new Error(out.errors[out.errors.length - 1]);
+    const modified: HttpRequestDoc = { ...doc, method: pre.request.method as HttpRequestDoc["method"], url: pre.request.url, headers: pre.request.headers, body: pre.request.body };
+    const p = prepareRequest({ ...chain, request: modified }, scopes, settings);
+    prepared = p.request;
+    unresolved = p.unresolved;
+    result = await httpApi.send(prepared);
+    const post = await runPhase("post", chain, { scopes, request: pre.request, response: toScriptResponse(result), hasEnvironment }, out);
+    scopes = post.scopes;
   } catch (e) {
-    const error = e instanceof Error ? e.message : String(e);
-    responses.start(tabId, requestId, []);
-    responses.fail(tabId, requestId, error);
-    return { error };
+    error = e instanceof Error ? e.message : String(e);
   }
 
-  responses.start(tabId, requestId, prepared.unresolved);
-  const record = (outcome: { result?: HttpResult; error?: string }) =>
-    useHistory
+  await commitVariables(root, initial, scopes).catch((e) => out.errors.push(`Saving variables failed: ${e}`));
+  const scriptError = result ? out.errors[0] : undefined;
+
+  useConsole.getState().add({
+    id: requestId,
+    time: started,
+    method: prepared?.method ?? doc.method,
+    url: prepared?.url ?? doc.url,
+    status: result?.status,
+    elapsedMs: result?.elapsedMs,
+    logs: out.logs,
+    errors: error && !out.errors.includes(error) ? [...out.errors, error] : out.errors,
+  });
+  if (prepared) {
+    void useHistory
       .getState()
       .record({
         id: requestId,
-        time: Date.now(),
-        method: prepared.request.method,
-        url: prepared.request.url,
-        root: tab.root,
-        path: tab.path,
-        request: structuredClone(tab.draft) as HttpRequestDoc,
-        ...outcome,
+        time: started,
+        method: prepared.method,
+        url: prepared.url,
+        root,
+        path,
+        request: structuredClone(doc),
+        ...(result ? { result } : { error }),
       })
       .catch((e) => console.error("history", e));
-  try {
-    const result = await httpApi.send(prepared.request);
-    useResponses.getState().finish(tabId, requestId, result);
-    void record({ result });
-    return { request: prepared.request, result };
-  } catch (e) {
-    const error = String(e);
-    useResponses.getState().fail(tabId, requestId, error);
-    void record({ error });
-    return { request: prepared.request, error };
   }
+  return { request: prepared, result, error, tests: out.tests, scriptError, unresolved };
+}
+
+export async function executeRequest(tabId: string): Promise<ExecutionOutcome | undefined> {
+  const tab = useTabs.getState().tabs.find((t) => t.id === tabId);
+  if (!tab || tab.draft.kind !== "http") return undefined;
+  const requestId = crypto.randomUUID();
+  useResponses.getState().start(tabId, requestId, []);
+  const outcome = await executeDoc({ root: tab.root, path: tab.path, doc: tab.draft }, requestId);
+  const responses = useResponses.getState();
+  if (outcome.result) responses.finish(tabId, requestId, outcome.result, { tests: outcome.tests, scriptError: outcome.scriptError, unresolved: outcome.unresolved });
+  else responses.fail(tabId, requestId, outcome.error ?? "Request failed", outcome.unresolved);
+  return outcome;
 }

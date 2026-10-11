@@ -54,9 +54,11 @@ export interface CodeEditorProps {
   lineWrapping?: boolean;
   /** Return true to cancel the default paste. */
   onPaste?: (text: string) => boolean;
+  /** Set false when `extensions` provide their own autocompletion. */
+  basicAutocomplete?: boolean;
 }
 
-export function CodeEditor({ value, onChange, language = "text", readOnly, singleLine, placeholder, onEnter, extensions = [], className = "", lineWrapping, onPaste }: CodeEditorProps) {
+export function CodeEditor({ value, onChange, language = "text", readOnly, singleLine, placeholder, onEnter, extensions = [], className = "", lineWrapping, onPaste, basicAutocomplete = true }: CodeEditorProps) {
   const dark = usePrefersDark();
   const exts = useMemo(() => {
     const list: Extension[] = [baseTheme, ...LANGS[language](), ...extensions];
@@ -103,7 +105,7 @@ export function CodeEditor({ value, onChange, language = "text", readOnly, singl
       basicSetup={
         singleLine
           ? { lineNumbers: false, foldGutter: false, highlightActiveLine: false, highlightActiveLineGutter: false, autocompletion: false, searchKeymap: false }
-          : { highlightActiveLine: !readOnly, autocompletion: true }
+          : { highlightActiveLine: !readOnly, autocompletion: basicAutocomplete && !readOnly }
       }
     />
   );

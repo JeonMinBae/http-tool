@@ -6,9 +6,10 @@ import { Button } from "../common/Button";
 import { Icon } from "../common/icons";
 import { SectionTabs } from "../request/RequestEditor";
 import { AuthEditor } from "../request/AuthEditor";
+import { ScriptsEditor } from "../request/ScriptsEditor";
 import { VariableTable } from "../vars/VariableTable";
 
-type Section = "variables" | "auth";
+type Section = "variables" | "auth" | "scripts";
 
 /** Settings editor for a collection (variables + auth) or a folder (auth). */
 export function ContainerSettings({ tab }: { tab: Tab<CollectionDoc | FolderDoc> }) {
@@ -16,15 +17,19 @@ export function ContainerSettings({ tab }: { tab: Tab<CollectionDoc | FolderDoc>
   const [section, setSection] = useState<Section>(isCollection ? "variables" : "auth");
   const update = useTabs((s) => s.update);
   const d = tab.draft;
-  const patch = (p: { variables?: CollectionDoc["variables"]; auth?: CollectionDoc["auth"] }) =>
+  const patch = (p: { variables?: CollectionDoc["variables"]; auth?: CollectionDoc["auth"]; scripts?: CollectionDoc["scripts"] }) =>
     update<CollectionDoc | FolderDoc>(tab.id, (x) => ({ ...x, ...p }) as CollectionDoc | FolderDoc);
 
   const sections: { id: Section; label: string }[] = isCollection
     ? [
         { id: "variables", label: "Variables" },
         { id: "auth", label: "Auth" },
+        { id: "scripts", label: "Scripts" },
       ]
-    : [{ id: "auth", label: "Auth" }];
+    : [
+        { id: "auth", label: "Auth" },
+        { id: "scripts", label: "Scripts" },
+      ];
 
   return (
     <div className="flex h-full flex-col">
@@ -44,6 +49,7 @@ export function ContainerSettings({ tab }: { tab: Tab<CollectionDoc | FolderDoc>
             secretHint="Saved in collection.yaml. Secret values are kept in the app data folder, not in the collection."
           />
         )}
+        {section === "scripts" && <ScriptsEditor scripts={d.scripts} onChange={(scripts) => patch({ scripts })} />}
         {section === "auth" && <AuthEditor auth={d.auth} allowInherit={!isCollection} onChange={(auth) => patch({ auth })} />}
       </div>
     </div>

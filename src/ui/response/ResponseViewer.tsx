@@ -4,11 +4,12 @@ import { base64ToUtf8 } from "../../core/encoding";
 import { detectKind, formatSent, formatSize, headerValue, parseSetCookie, prettyJson, prettyXml, PRETTY_LIMIT, type BodyKind } from "../../core/responseFormat";
 import { fileApi, type HttpResult } from "../../ipc";
 import { useResponses } from "../../state/responses";
+import type { TestResult } from "../../script/protocol";
 import { alertError } from "../common/dialogs";
 import { CodeEditor, type EditorLanguage } from "../editor/CodeEditor";
 import { SectionTabs } from "../request/RequestEditor";
 
-type Section = "body" | "headers" | "cookies" | "request";
+type Section = "body" | "headers" | "cookies" | "request" | "tests";
 type BodyMode = "pretty" | "raw" | "preview";
 
 function statusColor(status: number) {
@@ -138,8 +139,37 @@ function Redirects({ r }: { r: HttpResult }) {
   );
 }
 
-function Result({ r }: { r: HttpResult }) {
+function Tests({ tests, scriptError }: { tests: TestResult[]; scriptError?: string }) {
+  const passed = tests.filter((t) => t.passed).length;
+  return (
+    <div>
+      {scriptError && <p className="mono mb-2 whitespace-pre-wrap text-danger">{scriptError}</p>}
+      {tests.length === 0 ? (
+        <p className="text-muted">No tests. Add pm.test() calls in the Post-response script.</p>
+      ) : (
+        <>
+          <p className="mb-2 text-muted">
+            <span className="text-ok">{passed} passed</span>
+            {passed < tests.length && <span className="text-danger">, {tests.length - passed} failed</span>}
+          </p>
+          {tests.map((t, i) => (
+            <div key={i} className="flex gap-2 border-b border-line py-1">
+              <span className={`w-10 shrink-0 font-semibold ${t.passed ? "text-ok" : "text-danger"}`}>{t.passed ? "PASS" : "FAIL"}</span>
+              <span className="min-w-0 flex-1">
+                {t.name}
+                {t.error && <span className="mono block break-all text-[12px] text-muted">{t.error}</span>}
+              </span>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
+function Result({ r, tests = [], scriptError }: { r: HttpResult; tests?: TestResult[]; scriptError?: string }) {
   const [section, setSection] = useState<Section>("body");
+  const failed = tests.filter((t) => !t.passed).length;
   const cookieCount = r.headers.filter(([k]) => k.toLowerCase() === "set-cookie").length;
   return (
     <div className="flex h-full flex-col">
@@ -161,12 +191,14 @@ function Result({ r }: { r: HttpResult }) {
           { id: "headers", label: "Headers", badge: r.headers.length },
           { id: "cookies", label: "Cookies", badge: cookieCount },
           { id: "request", label: "Request" },
+          { id: "tests", label: "Tests", badge: tests.length ? (failed ? `${failed} failed` : `${tests.length}`) : scriptError ? "!" : undefined },
         ]}
       />
       <div className="min-h-0 flex-1 overflow-auto p-3">
         {section === "body" && <Body key={r.bodyBase64.length + r.elapsedMs} r={r} />}
         {section === "headers" && <Table rows={r.headers} />}
         {section === "cookies" && <Cookies r={r} />}
+        {section === "tests" && <Tests tests={tests} scriptError={scriptError} />}
         {section === "request" && (
           <div className="h-full rounded border border-line">
             <CodeEditor readOnly lineWrapping value={formatSent(r.sent)} />
@@ -188,5 +220,5 @@ export function ResponseViewer({ tabId }: { tabId: string }) {
         <p className="mono select-text whitespace-pre-wrap break-all">{exec.error}</p>
       </div>
     );
-  return <Result r={exec.result} />;
+  return <Result r={exec.result} tests={exec.tests} scriptError={exec.scriptError} />;
 }

@@ -5,11 +5,12 @@ import { useTabs, type Tab } from "../../state/tabs";
 import { KeyValueTable } from "../common/KeyValueTable";
 import { AuthEditor } from "./AuthEditor";
 import { BodyEditor } from "./BodyEditor";
+import { ScriptsEditor } from "./ScriptsEditor";
 import { SettingsTab } from "./SettingsTab";
 import { UrlBar } from "./UrlBar";
 import { useVarExtension } from "../editor/useScopes";
 
-type Section = "params" | "headers" | "body" | "auth" | "cookies" | "settings";
+type Section = "params" | "headers" | "body" | "auth" | "cookies" | "scripts" | "settings";
 
 const kv = (key: string, value: string, enabled: boolean): KeyValue => ({ key, value, enabled });
 const count = (rows: KeyValue[]) => rows.filter((r) => r.enabled && r.key).length;
@@ -51,6 +52,7 @@ export function RequestEditor({ tab }: { tab: Tab<HttpRequestDoc> }) {
           { id: "body", label: "Body", badge: d.body.type === "none" ? undefined : "●" },
           { id: "auth", label: "Auth", badge: d.auth.type === "inherit" || d.auth.type === "none" ? undefined : "●" },
           { id: "cookies", label: "Cookies", badge: count(d.cookies) },
+          { id: "scripts", label: "Scripts", badge: d.scripts.pre.trim() || d.scripts.post.trim() ? "●" : undefined },
           { id: "settings", label: "Settings", badge: Object.keys(d.settings).length ? "●" : undefined },
         ]}
       />
@@ -73,6 +75,7 @@ export function RequestEditor({ tab }: { tab: Tab<HttpRequestDoc> }) {
             <KeyValueTable rows={d.cookies} makeRow={kv} onChange={(cookies) => patch({ cookies })} />
           </>
         )}
+        {section === "scripts" && <ScriptsEditor scripts={d.scripts} onChange={(scripts) => patch({ scripts })} />}
         {section === "settings" && <SettingsTab settings={d.settings} onChange={(settings) => patch({ settings })} />}
       </div>
     </div>
