@@ -1,6 +1,7 @@
 import { IconButton } from "./common/Button";
 import { Icon } from "./common/icons";
 import { openCookieManager } from "./cookies/CookieManager";
+import { openSettings } from "./settings/SettingsDialog";
 import { EnvironmentSelect } from "./vars/EnvironmentSelect";
 
 export function TopBar() {
@@ -11,6 +12,9 @@ export function TopBar() {
       <EnvironmentSelect />
       <IconButton title="Cookies" onClick={() => openCookieManager()}>
         <Icon name="cookie" />
+      </IconButton>
+      <IconButton title="Settings" onClick={() => openSettings()}>
+        <Icon name="settings" />
       </IconButton>
     </div>
   );
