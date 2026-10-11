@@ -7,7 +7,7 @@ import { interpolate, type VarScopes } from "./variables";
 
 export type { Chain } from "./auth";
 
-const RAW_CONTENT_TYPE = { json: "application/json", text: "text/plain", xml: "application/xml", html: "text/html" } as const;
+export const RAW_CONTENT_TYPE = { json: "application/json", text: "text/plain", xml: "application/xml", html: "text/html" } as const;
 
 export class PrepareError extends Error {}
 
