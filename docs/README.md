@@ -20,6 +20,7 @@ macOS와 Windows에서 동작하는 가벼운 HTTP 클라이언트다. Postman·
 | [스크립트](features/scripts.md) | Pre/Post 스크립트, `pm` API, 샌드박스 |
 | [응답 보기](features/response.md) | Body, Headers, Cookies, 보낸 요청, Tests |
 | [cURL 변환](features/curl.md) | 가져오기와 내보내기 (bash, cmd, PowerShell) |
+| [Import / Export](features/import-export.md) | HTTP Tool JSON, OpenAPI 3.x 가져오기·내보내기 |
 | [쿠키](features/cookies.md) | 앱 전역 쿠키 저장소와 관리 화면 |
 | [히스토리](features/history.md) | 보낸 요청 기록 |
 | [네트워크 설정](features/settings.md) | 타임아웃, 리다이렉트, SSL, 프록시 |

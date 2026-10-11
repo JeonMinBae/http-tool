@@ -10,11 +10,11 @@
 
 ## 트리 조작
 
-**컬렉션 메뉴:** New Request, New WebSocket, New Folder, Collection Settings, Run Collection, Copy Path, Close Collection
+**컬렉션 메뉴:** New Request, New WebSocket, New Folder, Collection Settings, Run Collection, Export…, Copy Path, Close Collection
 
-**폴더 메뉴:** New Request, New WebSocket, New Folder, Folder Settings, Run Folder, Rename, Duplicate, Delete
+**폴더 메뉴:** New Request, New WebSocket, New Folder, Folder Settings, Run Folder, Rename, Duplicate, Export…, Delete
 
-**요청 메뉴:** Rename, Duplicate, Delete
+**요청 메뉴:** Rename, Duplicate, Export…, Delete
 
 - 항목을 만들면 상위 폴더가 자동으로 펼쳐지고, 요청은 바로 탭으로 열린다.
 - **드래그앤드롭:** 폴더 위에 놓으면 그 안으로 이동하고, 항목 사이에 놓으면 순서가 바뀐다. 다른 폴더로 옮기면 파일이 실제로 이동한다.
