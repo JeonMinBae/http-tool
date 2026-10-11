@@ -195,6 +195,10 @@ pub async fn send_with(req: PreparedRequest, jar: &CookieJar, allow_stream: bool
                 headers.insert(COOKIE, HeaderValue::from_str(&c).map_err(|e| AppError::Invalid(e.to_string()))?);
             }
         }
+        // multipart() appends its own Content-Type with the boundary; a user-set one would be sent too.
+        if matches!(body, PreparedBody::FormData { .. }) {
+            headers.remove(CONTENT_TYPE);
+        }
         let (builder, preview) = apply_body(client.request(method.clone(), url.clone()).headers(headers), &body).await?;
         let built = builder.build().map_err(|e| AppError::Http(e.to_string()))?;
         let sent = capture(&built, preview);
@@ -390,6 +394,32 @@ mod tests {
         let r = send(req, &CookieJar::in_memory()).await.unwrap();
         m.assert();
         assert!(header(&r.sent, "content-type").unwrap().starts_with("multipart/form-data"));
+    }
+
+    #[tokio::test]
+    async fn multipart_ignores_user_content_type() {
+        let server = MockServer::start();
+        let m = server.mock(|w, t| {
+            w.method(POST).path("/up").matches(|r| {
+                let cts: Vec<_> = r
+                    .headers
+                    .iter()
+                    .flatten()
+                    .filter(|(k, _)| k.eq_ignore_ascii_case("content-type"))
+                    .collect();
+                cts.len() == 1 && cts[0].1.starts_with("multipart/form-data; boundary=")
+            });
+            t.status(200);
+        });
+        let mut req = test_req(&server.url("/up"));
+        req.method = "POST".into();
+        req.headers = vec![("Content-Type".into(), "multipart/form-data".into())];
+        req.body = PreparedBody::FormData { fields: vec![FormPart { name: "t".into(), kind: "text".into(), value: "hello".into() }] };
+        let r = send(req, &CookieJar::in_memory()).await.unwrap();
+        m.assert();
+        let cts: Vec<_> = r.sent.headers.iter().filter(|(k, _)| k.eq_ignore_ascii_case("content-type")).collect();
+        assert_eq!(cts.len(), 1, "{cts:?}");
+        assert!(cts[0].1.contains("boundary="));
     }
 
     #[tokio::test]

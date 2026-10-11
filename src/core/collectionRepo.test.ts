@@ -168,4 +168,24 @@ describe("websocket files", () => {
     const path = await repo.renameRequest("/c/chat.yaml", "Chat 2");
     expect((await repo.readRequest(path)).kind).toBe("websocket");
   });
+
+  it("renames a websocket node as a .yaml file, not a folder", async () => {
+    const { serializeWebSocket } = await import("./yaml");
+    const { emptyWebSocket } = await import("./model");
+    fs.files.set("/c/chat.yaml", serializeWebSocket({ ...emptyWebSocket("Chat", 9), url: "ws://x" }));
+    const path = await repo.rename({ type: "websocket", path: "/c/chat.yaml" }, "Live Feed");
+    expect(path).toBe("/c/Live Feed.yaml");
+    expect(fs.files.has("/c/chat.yaml")).toBe(false);
+    expect(fs.dirs.has("/c/Live Feed")).toBe(false);
+    const doc = await repo.readRequest(path);
+    expect(doc.kind).toBe("websocket");
+    expect(doc.name).toBe("Live Feed");
+    const col = await repo.load(ROOT);
+    expect(col.children.find((c) => c.path === path)?.type).toBe("websocket");
+  });
+
+  it("dispatches folder and request renames", async () => {
+    expect(await repo.rename({ type: "folder", path: "/c/users" }, "People")).toBe("/c/People");
+    expect(await repo.rename({ type: "request", path: "/c/root.yaml" }, "Top")).toBe("/c/Top.yaml");
+  });
 });
