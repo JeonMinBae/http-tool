@@ -1,9 +1,9 @@
 /// <reference lib="webworker" />
 import type { HostMessage, ScriptResponse, ScriptSendRequest, WorkerMessage } from "./protocol";
+import { lockdownScope } from "./lockdown";
 import { runScriptCode } from "./runCode";
 
 const scope = self as unknown as DedicatedWorkerGlobalScope;
-const post = (m: WorkerMessage) => scope.postMessage(m);
 
 // Remove network and storage capabilities from the worker itself (user code also gets them shadowed).
 for (const name of ["fetch", "XMLHttpRequest", "WebSocket", "EventSource", "importScripts", "indexedDB", "caches"]) {
@@ -13,6 +13,9 @@ for (const name of ["fetch", "XMLHttpRequest", "WebSocket", "EventSource", "impo
     /* non-configurable in this engine */
   }
 }
+
+// Last: keeps postMessage and the message listener private and freezes the global.
+const { post } = lockdownScope<WorkerMessage, HostMessage>(scope, onHostMessage);
 
 let nextId = 1;
 const waiting = new Map<number, { resolve: (r: ScriptResponse) => void; reject: (e: Error) => void }>();
@@ -25,8 +28,7 @@ function sendRequest(request: ScriptSendRequest): Promise<ScriptResponse> {
   });
 }
 
-scope.onmessage = async (e: MessageEvent<HostMessage>) => {
-  const msg = e.data;
+async function onHostMessage(msg: HostMessage) {
   if (msg.type === "sendResult") {
     const w = waiting.get(msg.id);
     waiting.delete(msg.id);
@@ -39,4 +41,4 @@ scope.onmessage = async (e: MessageEvent<HostMessage>) => {
     const output = await runScriptCode(msg.input, { sendRequest });
     post({ type: "done", output });
   }
-};
+}

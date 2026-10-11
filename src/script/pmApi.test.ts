@@ -1,7 +1,10 @@
+/// <reference types="node" />
+import vm from "node:vm";
 import { describe, expect, it } from "vitest";
 import { emptyRequest } from "../core/model";
 import type { VarScopes } from "../core/variables";
 import type { ScriptInput, ScriptResponse, ScriptSendRequest } from "./protocol";
+import { lockdownScope } from "./lockdown";
 import { runScriptCode } from "./runCode";
 
 const s = (p: Partial<VarScopes> = {}): VarScopes => ({ local: {}, environment: {}, collection: {}, global: {}, ...p });
@@ -100,6 +103,11 @@ describe("pm.request", () => {
 });
 
 describe("sandbox", () => {
+  it("provides chai through require", async () => {
+    const out = await runInline(`const { expect } = require('chai'); pm.test('c', () => expect([1, 2]).to.have.length(2));`);
+    expect(out.tests).toEqual([{ name: "c", passed: true }]);
+  });
+
   it("require only allows whitelisted modules", async () => {
     expect((await runInline(`require('fs')`)).error).toMatch(/not available/);
   });
@@ -139,5 +147,48 @@ describe("sandbox", () => {
     );
     expect(seen).toEqual([{ method: "POST", url: "http://t/token", headers: [["X-A", "1"]], body: "x" }]);
     expect(out.scopes.environment.token).toBe("7");
+  });
+});
+
+describe("worker lockdown", () => {
+  /** A fresh realm shaped like a worker global (Node cannot freeze a vm global, so only the shadowing is checked here): messaging members live on its prototype, as in browsers. */
+  function fakeWorkerRealm() {
+    const posted: unknown[] = [];
+    const ctx = vm.createContext({ record: (m: unknown) => posted.push(m) });
+    vm.runInContext(
+      `const proto = Object.create(Object.getPrototypeOf(globalThis));
+       let handler = null; const listeners = [];
+       proto.postMessage = function (m) { record(m); };
+       Object.defineProperty(proto, "onmessage", { get() { return handler; }, set(f) { handler = f; }, configurable: true });
+       proto.addEventListener = function (type, fn) { if (type === "message") listeners.push(fn); };
+       Object.setPrototypeOf(globalThis, proto);
+       globalThis.deliver = (data) => { listeners.forEach((f) => f({ data })); if (handler) handler({ data }); };`,
+      ctx,
+    );
+    return { ctx, posted, global: vm.runInContext("globalThis", ctx) as object };
+  }
+
+  it("keeps postMessage and the inbox private after lockdown", () => {
+    const { ctx, posted, global } = fakeWorkerRealm();
+    const received: unknown[] = [];
+    const { post } = lockdownScope(global, (m) => received.push(m));
+    const attack = vm.runInContext(
+      `"use strict";
+       const g = Function("return this")();
+       const tries = [];
+       const attempt = (f) => { try { f(); tries.push("ran"); } catch (e) { tries.push("blocked"); } };
+       attempt(() => g.postMessage({ type: "done", output: "fake" }));
+       attempt(() => Object.getPrototypeOf(g).postMessage.call(g, { type: "done", output: "fake" }));
+       attempt(() => { g.postMessage = (m) => record(m); });
+       attempt(() => { g.onmessage = () => record("hijacked"); });
+       ({ tries, type: typeof g.postMessage, locked: !Object.getOwnPropertyDescriptor(g, "postMessage").configurable });`,
+      ctx,
+    );
+    expect(attack).toEqual({ tries: ["blocked", "blocked", "blocked", "blocked"], type: "undefined", locked: true });
+    expect(posted).toEqual([]);
+    post({ type: "done" });
+    vm.runInContext(`deliver({ type: "run" })`, ctx);
+    expect(posted).toEqual([{ type: "done" }]);
+    expect(received).toEqual([{ type: "run" }]);
   });
 });
