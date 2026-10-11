@@ -4,6 +4,7 @@ import { newUntitledRequest, openCollectionFromDialog } from "../actions";
 import { IconButton } from "../common/Button";
 import { Icon } from "../common/icons";
 import { CollectionTree } from "./CollectionTree";
+import { HistoryPanel } from "./HistoryPanel";
 import { openCurlImport } from "../curl/CurlDialogs";
 
 type Section = "collections" | "history";
@@ -62,7 +63,7 @@ export function Sidebar() {
             )}
           </>
         )}
-        {section === "history" && <div className="p-4 text-center text-muted">No history yet.</div>}
+        {section === "history" && <HistoryPanel />}
       </div>
     </div>
   );

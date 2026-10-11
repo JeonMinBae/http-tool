@@ -122,3 +122,35 @@ export const cookieApi = {
 export const fileApi = {
   saveBase64: (path: string, data: string) => invoke<void>("file_save_base64", { path, data }),
 };
+
+export interface HistorySummary {
+  id: string;
+  time: number;
+  method: string;
+  url: string;
+  status: number | null;
+  elapsedMs: number | null;
+  error: string | null;
+}
+
+export interface HistoryEntry {
+  id: string;
+  time: number;
+  method: string;
+  /** Resolved URL that was sent. */
+  url: string;
+  root: string | null;
+  path: string | null;
+  /** Request definition before variable substitution (secrets stay as {{vars}}). */
+  request: import("./core/model").HttpRequestDoc;
+  result?: HttpResult;
+  error?: string;
+  truncated?: boolean;
+}
+
+export const historyApi = {
+  append: (entry: HistoryEntry, limit: number) => invoke<void>("history_append", { entry, limit }),
+  list: () => invoke<HistorySummary[]>("history_list"),
+  get: (id: string) => invoke<HistoryEntry>("history_get", { id }),
+  clear: () => invoke<void>("history_clear"),
+};

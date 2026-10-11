@@ -2,6 +2,7 @@ import { httpApi, type HttpResult, type PreparedRequest } from "../ipc";
 import type { HttpRequestDoc } from "./model";
 import { buildChain, prepareRequest } from "./prepare";
 import { buildScopes } from "./variables";
+import { useHistory } from "../state/history";
 import { useResponses } from "../state/responses";
 import { useSettings } from "../state/settings";
 import { useTabs } from "../state/tabs";
@@ -44,13 +45,29 @@ export async function executeRequest(tabId: string): Promise<ExecutionOutcome> {
   }
 
   responses.start(tabId, requestId, prepared.unresolved);
+  const record = (outcome: { result?: HttpResult; error?: string }) =>
+    useHistory
+      .getState()
+      .record({
+        id: requestId,
+        time: Date.now(),
+        method: prepared.request.method,
+        url: prepared.request.url,
+        root: tab.root,
+        path: tab.path,
+        request: structuredClone(tab.draft) as HttpRequestDoc,
+        ...outcome,
+      })
+      .catch((e) => console.error("history", e));
   try {
     const result = await httpApi.send(prepared.request);
     useResponses.getState().finish(tabId, requestId, result);
+    void record({ result });
     return { request: prepared.request, result };
   } catch (e) {
     const error = String(e);
     useResponses.getState().fail(tabId, requestId, error);
+    void record({ error });
     return { request: prepared.request, error };
   }
 }

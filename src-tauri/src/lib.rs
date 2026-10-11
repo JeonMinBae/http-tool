@@ -3,6 +3,7 @@ mod cookies;
 mod error;
 mod files;
 mod fs_commands;
+mod history;
 mod http;
 mod state;
 
@@ -28,6 +29,10 @@ pub fn run() {
             cookies::cookie_delete,
             cookies::cookie_clear,
             http::client::http_send,
+            history::history_append,
+            history::history_list,
+            history::history_get,
+            history::history_clear,
             files::file_save_base64,
             fs_commands::collection_register,
             fs_commands::collection_unregister,
