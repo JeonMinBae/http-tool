@@ -13,7 +13,7 @@ function StatusBar() {
   const errors = entries.reduce((n, e) => n + e.errors.length, 0);
   return (
     <div className="flex h-6 shrink-0 items-center gap-3 border-t border-line bg-panel px-3 text-[12px] text-muted">
-      <button type="button" className={`flex items-center gap-1 hover:text-fg ${open ? "text-fg" : ""}`} onClick={() => toggle()}>
+      <button type="button" className={`flex items-center gap-1 transition-colors hover:text-fg ${open ? "text-fg" : ""}`} onClick={() => toggle()}>
         <Icon name="terminal" size={12} /> Console
         {errors > 0 && <span className="text-danger">({errors})</span>}
       </button>
@@ -71,10 +71,12 @@ function ConsoleDock() {
     window.addEventListener("mouseup", up);
   };
   return (
-    <div className="flex shrink-0 flex-col" style={{ height }}>
-      <div className="h-1 shrink-0 cursor-row-resize border-t border-line hover:bg-accent" onMouseDown={onMouseDown} />
-      <div className="min-h-0 flex-1">
-        <ConsolePanel />
+    <div className="flex shrink-0 flex-col overflow-hidden" style={{ height }}>
+      <div className="flex h-full animate-slide-up flex-col">
+        <div className="h-1 shrink-0 cursor-row-resize border-t border-line transition-colors hover:bg-accent" onMouseDown={onMouseDown} />
+        <div className="min-h-0 flex-1">
+          <ConsolePanel />
+        </div>
       </div>
     </div>
   );

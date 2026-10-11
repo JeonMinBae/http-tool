@@ -2,7 +2,9 @@ import { useState } from "react";
 import { getNewToken, isExpired, tokenKey } from "../../core/oauth2";
 import type { OAuth2Auth } from "../../core/model";
 import { oauthDeps, resolveOAuth, tokenCache, useOAuthTokens } from "../../state/oauthTokens";
+import { toast } from "../../state/toasts";
 import { Button } from "../common/Button";
+import { Spinner } from "../common/Spinner";
 import { useScopes } from "../editor/useScopes";
 
 function Field({ label, value, onChange, placeholder, type = "text" }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
@@ -43,8 +45,10 @@ export function OAuth2Editor({ auth, onChange, root }: { auth: OAuth2Auth; onCha
     setError(null);
     try {
       await getNewToken(resolved, oauthDeps, tokenCache);
+      toast.success("Access token received");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      toast.error("Could not get access token", e);
     } finally {
       setBusy(false);
     }
@@ -87,6 +91,7 @@ export function OAuth2Editor({ auth, onChange, root }: { auth: OAuth2Auth; onCha
             </Button>
           )}
           <Button variant="primary" disabled={busy} onClick={fetchToken}>
+            {busy && <Spinner />}
             {busy ? (auth.grant === "authorization_code" ? "Waiting for browser…" : "Requesting…") : "Get New Access Token"}
           </Button>
         </div>

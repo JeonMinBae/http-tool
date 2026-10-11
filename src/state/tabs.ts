@@ -18,6 +18,8 @@ export interface Tab<D extends TabDoc = TabDoc> {
   path: string | null;
   draft: D;
   saved: D;
+  /** Time of the last explicit save; drives the brief "saved" check in the tab bar. */
+  savedAt?: number;
 }
 
 export const isDirty = (t: Tab) => JSON.stringify(t.draft) !== JSON.stringify(t.saved);
@@ -79,7 +81,7 @@ export const useTabs = create<TabsState>((set, get) => ({
       tabs: get().tabs.map((t) => {
         if (t.id !== id) return t;
         const saved = structuredClone(doc ?? t.draft);
-        return { ...t, root, path, draft: doc ? structuredClone(doc) : t.draft, saved };
+        return { ...t, root, path, draft: doc ? structuredClone(doc) : t.draft, saved, savedAt: Date.now() };
       }),
     });
   },

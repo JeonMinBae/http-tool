@@ -51,7 +51,7 @@ export function ContextMenuHost() {
   const x = Math.min(open.x, window.innerWidth - 200);
   const y = Math.min(open.y, window.innerHeight - open.items.length * 28 - 8);
   return (
-    <div ref={ref} className="fixed z-50 min-w-44 rounded-md border border-line bg-elevated py-1 shadow-lg" style={{ left: x, top: y }}>
+    <div ref={ref} className="fixed z-50 min-w-44 animate-fade-in rounded-md border border-line bg-elevated py-1 shadow-lg" style={{ left: x, top: y }}>
       {open.items.map((item, i) =>
         item === "separator" ? (
           <div key={i} className="my-1 border-t border-line" />
@@ -60,7 +60,7 @@ export function ContextMenuHost() {
             key={i}
             type="button"
             disabled={item.disabled}
-            className={`block w-full px-3 py-1 text-left hover:bg-hover disabled:opacity-40 ${item.danger ? "text-danger" : ""}`}
+            className={`block w-full px-3 py-1 text-left transition-colors hover:bg-hover active:bg-selected disabled:opacity-40 ${item.danger ? "text-danger" : ""}`}
             onClick={() => {
               hide();
               item.onSelect();

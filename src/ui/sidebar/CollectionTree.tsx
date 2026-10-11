@@ -2,6 +2,7 @@ import { useState, type DragEvent, type MouseEvent } from "react";
 import type { LoadedCollection, TreeNode } from "../../core/collectionRepo";
 import { dirName, isInside, samePath } from "../../core/path";
 import { useTabs } from "../../state/tabs";
+import { toast } from "../../state/toasts";
 import { useExpanded } from "../../state/treeExpand";
 import {
   closeCollection,
@@ -16,6 +17,7 @@ import {
   openRunner,
   renameNode,
 } from "../actions";
+import { COLLAPSE_MS, Collapsible } from "../common/Collapsible";
 import { showMenu, type MenuEntry } from "../common/ContextMenu";
 import { Icon } from "../common/icons";
 import { methodColor, methodLabel } from "../common/methodColor";
@@ -73,6 +75,15 @@ function findChildren(col: LoadedCollection, dir: string): TreeNode[] {
   return walk(col.children) ?? [];
 }
 
+const Chevron = ({ open }: { open: boolean }) => (
+  <Icon
+    name="chevronRight"
+    size={12}
+    className={`shrink-0 text-muted transition-transform ${open ? "rotate-90" : ""}`}
+    style={{ transitionDuration: `${COLLAPSE_MS}ms` }}
+  />
+);
+
 function Row({ col, node, depth }: { col: LoadedCollection; node: TreeNode; depth: number }) {
   const { expanded, toggle } = useExpanded();
   const activePath = useActivePath();
@@ -127,13 +138,13 @@ function Row({ col, node, depth }: { col: LoadedCollection; node: TreeNode; dept
         onClick={onClick}
         onDoubleClick={() => node.type === "folder" && openNode(col.root, node)}
         onContextMenu={onMenu}
-        className={`group relative flex h-7 cursor-pointer items-center gap-1 pr-1 ${active ? "bg-selected" : "hover:bg-hover"} ${drop === "into" ? "outline outline-1 outline-accent" : ""}`}
+        className={`group relative flex h-7 cursor-pointer items-center gap-1 pr-1 transition-colors ${active ? "bg-selected" : "hover:bg-hover active:bg-selected"} ${drop === "into" ? "outline outline-1 -outline-offset-1 outline-accent" : ""}`}
         style={{ paddingLeft: 6 + depth * 14 }}
       >
         {drop === "before" && <div className="absolute inset-x-0 top-0 h-0.5 bg-accent" />}
         {node.type === "folder" ? (
           <>
-            <Icon name={isOpen ? "chevronDown" : "chevronRight"} size={12} className="shrink-0 text-muted" />
+            <Chevron open={isOpen} />
             <Icon name="folder" size={14} className="shrink-0 text-muted" />
           </>
         ) : node.type === "websocket" ? (
@@ -151,11 +162,15 @@ function Row({ col, node, depth }: { col: LoadedCollection; node: TreeNode; dept
           <Icon name="more" />
         </button>
       </div>
-      {isOpen && node.type === "folder" && node.children.map((c) => <Row key={c.path} col={col} node={c} depth={depth + 1} />)}
-      {isOpen && node.type === "folder" && node.children.length === 0 && (
-        <div className="h-6 text-[11px] leading-6 text-muted" style={{ paddingLeft: 26 + (depth + 1) * 14 }}>
-          Empty folder
-        </div>
+      {node.type === "folder" && (
+        <Collapsible open={isOpen}>
+          {node.children.map((c) => <Row key={c.path} col={col} node={c} depth={depth + 1} />)}
+          {node.children.length === 0 && (
+            <div className="h-6 text-[11px] leading-6 text-muted" style={{ paddingLeft: 26 + (depth + 1) * 14 }}>
+              Empty folder
+            </div>
+          )}
+        </Collapsible>
       )}
     </>
   );
@@ -174,7 +189,14 @@ export function CollectionTree({ col }: { col: LoadedCollection }) {
     { label: "Run Collection", onSelect: () => openRunner(col.root, col.root, col.doc.name) },
     { label: "Export…", onSelect: () => openExportDialog(col) },
     "separator",
-    { label: "Copy Path", onSelect: () => navigator.clipboard.writeText(col.root) },
+    {
+      label: "Copy Path",
+      onSelect: () =>
+        void navigator.clipboard.writeText(col.root).then(
+          () => toast.success("Path copied", col.root),
+          (e) => toast.error("Could not copy path", e),
+        ),
+    },
     { label: "Close Collection", onSelect: () => closeCollection(col.root) },
   ];
 
@@ -188,7 +210,7 @@ export function CollectionTree({ col }: { col: LoadedCollection }) {
   return (
     <div className="mb-1">
       <div
-        className={`group flex h-7 cursor-pointer items-center gap-1 pl-1.5 pr-1 font-medium hover:bg-hover ${drop ? "outline outline-1 outline-accent" : ""}`}
+        className={`group flex h-7 cursor-pointer items-center gap-1 pl-1.5 pr-1 font-medium transition-colors hover:bg-hover active:bg-selected ${drop ? "outline outline-1 outline-accent" : ""}`}
         onClick={() => toggle(col.root)}
         onDoubleClick={() => openCollectionSettings(col.root)}
         onContextMenu={(e) => showMenu(e, menu)}
@@ -202,7 +224,7 @@ export function CollectionTree({ col }: { col: LoadedCollection }) {
         onDrop={onDrop}
         title={col.root}
       >
-        <Icon name={isOpen ? "chevronDown" : "chevronRight"} size={12} className="shrink-0 text-muted" />
+        <Chevron open={isOpen} />
         <Icon name="collection" size={14} className="shrink-0 text-muted" />
         <span className="min-w-0 flex-1 truncate">{col.doc.name}</span>
         {col.errors.length > 0 && (
@@ -214,12 +236,14 @@ export function CollectionTree({ col }: { col: LoadedCollection }) {
           <Icon name="more" />
         </button>
       </div>
-      {isOpen && col.children.map((n) => <Row key={n.path} col={col} node={n} depth={1} />)}
-      {isOpen && col.children.length === 0 && (
-        <button type="button" className="ml-7 h-6 text-[11px] text-muted hover:text-fg" onClick={() => newRequest(col.root, col.root)}>
-          + Add a request
-        </button>
-      )}
+      <Collapsible open={isOpen}>
+        {col.children.map((n) => <Row key={n.path} col={col} node={n} depth={1} />)}
+        {col.children.length === 0 && (
+          <button type="button" className="ml-7 h-6 text-[11px] text-muted hover:text-fg" onClick={() => newRequest(col.root, col.root)}>
+            + Add a request
+          </button>
+        )}
+      </Collapsible>
     </div>
   );
 }

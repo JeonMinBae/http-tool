@@ -4,9 +4,12 @@ import { parseCurl } from "../../core/curl/import";
 import { prepareForTab } from "../../core/execute";
 import type { HttpRequestDoc } from "../../core/model";
 import type { Tab } from "../../state/tabs";
+import { toast } from "../../state/toasts";
 import { newUntitledRequest } from "../actions";
 import { Button } from "../common/Button";
 import { alertError, Modal, openDialog } from "../common/dialogs";
+import { Icon } from "../common/icons";
+import { useTransientFlag } from "../common/useTransientFlag";
 import { CodeEditor } from "../editor/CodeEditor";
 
 const SHELL_KEY = "curl-shell";
@@ -28,7 +31,8 @@ function loadShell(): Shell {
 
 function ExportBody({ tab, close }: { tab: Tab<HttpRequestDoc>; close: () => void }) {
   const [shell, setShell] = useState<Shell>(loadShell);
-  const [copied, setCopied] = useState(false);
+  const [copies, setCopies] = useState(0);
+  const copied = useTransientFlag(copies, 1500);
   const result = useMemo(() => {
     try {
       const prepared = prepareForTab(tab.root, tab.path, tab.draft);
@@ -40,7 +44,6 @@ function ExportBody({ tab, close }: { tab: Tab<HttpRequestDoc>; close: () => voi
 
   const choose = (s: Shell) => {
     setShell(s);
-    setCopied(false);
     try {
       localStorage.setItem(SHELL_KEY, s);
     } catch {
@@ -60,11 +63,22 @@ function ExportBody({ tab, close }: { tab: Tab<HttpRequestDoc>; close: () => voi
             variant="primary"
             disabled={!("text" in result)}
             onClick={async () => {
-              if ("text" in result && result.text) await navigator.clipboard.writeText(result.text);
-              setCopied(true);
+              if (!("text" in result && result.text)) return;
+              try {
+                await navigator.clipboard.writeText(result.text);
+                setCopies((n) => n + 1);
+              } catch (e) {
+                toast.error("Could not copy", e);
+              }
             }}
           >
-            {copied ? "Copied" : "Copy"}
+            {copied ? (
+              <>
+                <Icon name="check" size={12} /> Copied
+              </>
+            ) : (
+              "Copy"
+            )}
           </Button>
         </>
       }

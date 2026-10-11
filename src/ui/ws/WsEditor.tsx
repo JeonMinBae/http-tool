@@ -10,6 +10,7 @@ import { Button } from "../common/Button";
 import { askText } from "../common/dialogs";
 import { Icon } from "../common/icons";
 import { KeyValueTable } from "../common/KeyValueTable";
+import { PulseDot, Spinner } from "../common/Spinner";
 import { CodeEditor } from "../editor/CodeEditor";
 import { useScopes, useVarExtension } from "../editor/useScopes";
 import { SectionTabs } from "../request/RequestEditor";
@@ -140,7 +141,15 @@ export function WsEditor({ tab }: { tab: Tab<WebSocketDoc> }) {
                   </Button>
                 ) : (
                   <Button className="w-28" onClick={() => useWebSockets.getState().disconnect(tab.id)}>
-                    {status === "connecting" ? "Connecting…" : "Disconnect"}
+                    {status === "connecting" ? (
+                      <>
+                        <Spinner /> Connecting…
+                      </>
+                    ) : (
+                      <>
+                        <PulseDot /> Disconnect
+                      </>
+                    )}
                   </Button>
                 )}
                 <Button onClick={() => void saveTab(tab.id)}>Save</Button>

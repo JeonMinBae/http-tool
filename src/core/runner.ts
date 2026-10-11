@@ -85,3 +85,22 @@ export async function runCollection(opts: RunOptions, onProgress: (r: RunResult)
     elapsedMs: Date.now() - started,
   };
 }
+
+export interface RunProgress {
+  total: number;
+  /** 0..1 */
+  ratio: number;
+  /** Item running now (or waiting out the delay before it); null once all are done. */
+  current: { iteration: number; index: number } | null;
+}
+
+/** Progress for `done` finished results of `itemCount` items run `iterations` times, in runCollection order. */
+export function runProgress(itemCount: number, iterations: number, done: number): RunProgress {
+  const total = itemCount * iterations;
+  if (total === 0) return { total, ratio: 0, current: null };
+  return {
+    total,
+    ratio: Math.min(1, done / total),
+    current: done < total ? { iteration: Math.floor(done / itemCount) + 1, index: done % itemCount } : null,
+  };
+}

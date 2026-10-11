@@ -2,7 +2,6 @@ import type { SVGProps } from "react";
 
 const PATHS = {
   chevronRight: "M9 6l6 6-6 6",
-  chevronDown: "M6 9l6 6 6-6",
   folder: "M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z",
   collection: "M4 5h16v4H4zM4 11h16v8H4z",
   plus: "M12 5v14M5 12h14",
@@ -21,6 +20,8 @@ const PATHS = {
   terminal: "M4 17l6-5-6-5M12 19h8",
   play: "M7 5l12 7-12 7z",
   stop: "M6 6h12v12H6z",
+  check: "M5 12l5 5L20 7",
+  alert: "M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z",
 } as const;
 
 export type IconName = keyof typeof PATHS;

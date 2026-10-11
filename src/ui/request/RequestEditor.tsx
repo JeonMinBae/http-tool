@@ -22,7 +22,7 @@ export function SectionTabs<S extends string>({ sections, active, onSelect }: { 
         <button
           key={s.id}
           type="button"
-          className={`-mb-px border-b-2 py-1.5 ${active === s.id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg"}`}
+          className={`-mb-px border-b-2 py-1.5 transition-colors ${active === s.id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg"}`}
           onClick={() => onSelect(s.id)}
         >
           {s.label}

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useConsole } from "../../state/console";
 
-const LEVEL = { log: "text-fg", info: "text-[#2563eb] dark:text-[#60a5fa]", warn: "text-warn", error: "text-danger" } as const;
+const LEVEL = { log: "text-fg", info: "text-info", warn: "text-warn", error: "text-danger" } as const;
 
 export function ConsolePanel() {
   const { entries, clear, toggle } = useConsole();
