@@ -48,6 +48,10 @@ export function openNode(root: string, node: TreeNode) {
   tabs().open(root, node.path, node.doc);
 }
 
+export function openRunner(root: string, path: string, name: string) {
+  tabs().open(root, path, { kind: "runner", name: `Run: ${name}` });
+}
+
 export function openCollectionSettings(root: string) {
   const col = ws().collections.find((c) => samePath(c.root, root));
   if (col) tabs().open(col.root, col.root, col.doc);
@@ -139,6 +143,7 @@ export async function saveTab(id: string): Promise<boolean> {
   if (!tab) return false;
   const result = await guard("Could not save", async () => {
     const doc = tab.draft;
+    if (doc.kind === "runner") return true;
     if (doc.kind === "collection") {
       await ws().saveCollectionDoc(tab.root!, doc);
       tabs().markSaved(id, tab.root!, tab.path!);

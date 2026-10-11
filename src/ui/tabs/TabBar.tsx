@@ -7,6 +7,7 @@ import { methodColor, methodLabel } from "../common/methodColor";
 function TabLabel({ tab }: { tab: Tab }) {
   const d = tab.draft;
   if (d.kind === "http") return <span className={`mono text-[10px] font-bold ${methodColor(d.method)}`}>{methodLabel(d.method)}</span>;
+  if (d.kind === "runner") return <Icon name="play" size={12} className="text-accent" />;
   return <Icon name={d.kind === "folder" ? "folder" : "collection"} size={12} className="text-muted" />;
 }
 

@@ -1,5 +1,6 @@
 import type { CollectionDoc, FolderDoc, HttpRequestDoc } from "../../core/model";
 import { ContainerSettings } from "../collection/ContainerSettings";
+import { RunnerView } from "../runner/RunnerView";
 import { useResponses } from "../../state/responses";
 import { useTabs, type Tab } from "../../state/tabs";
 import { Split } from "../common/Split";
@@ -26,6 +27,7 @@ export function RequestPane() {
       </div>
     );
   }
+  if (tab.draft.kind === "runner") return <RunnerView key={tab.id} root={tab.root!} path={tab.path!} />;
   if (tab.draft.kind !== "http") return <ContainerSettings key={tab.id} tab={tab as Tab<CollectionDoc | FolderDoc>} />;
   const reqTab = tab as Tab<HttpRequestDoc>;
   return (

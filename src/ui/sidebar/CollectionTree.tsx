@@ -12,6 +12,7 @@ import {
   newRequest,
   openCollectionSettings,
   openNode,
+  openRunner,
   renameNode,
 } from "../actions";
 import { showMenu, type MenuEntry } from "../common/ContextMenu";
@@ -32,6 +33,7 @@ function nodeMenu(root: string, node: TreeNode): MenuEntry[] {
       { label: "New Request", onSelect: () => newRequest(root, node.path) },
       { label: "New Folder", onSelect: () => newFolder(root, node.path) },
       { label: "Folder Settings", onSelect: () => openNode(root, node) },
+      { label: "Run Folder", onSelect: () => openRunner(root, node.path, node.doc.name) },
       "separator",
     );
   }
@@ -161,6 +163,7 @@ export function CollectionTree({ col }: { col: LoadedCollection }) {
     { label: "New Request", onSelect: () => newRequest(col.root, col.root) },
     { label: "New Folder", onSelect: () => newFolder(col.root, col.root) },
     { label: "Collection Settings", onSelect: () => openCollectionSettings(col.root) },
+    { label: "Run Collection", onSelect: () => openRunner(col.root, col.root, col.doc.name) },
     "separator",
     { label: "Copy Path", onSelect: () => navigator.clipboard.writeText(col.root) },
     { label: "Close Collection", onSelect: () => closeCollection(col.root) },

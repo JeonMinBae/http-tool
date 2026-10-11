@@ -18,6 +18,8 @@ const PATHS = {
   code: "M8 8l-4 4 4 4M16 8l4 4-4 4",
   import: "M12 3v12M7 10l5 5 5-5M5 21h14",
   terminal: "M4 17l6-5-6-5M12 19h8",
+  play: "M7 5l12 7-12 7z",
+  stop: "M6 6h12v12H6z",
 } as const;
 
 export type IconName = keyof typeof PATHS;

@@ -2,7 +2,13 @@ import { create } from "zustand";
 import type { CollectionDoc, FolderDoc, HttpRequestDoc } from "../core/model";
 import { isInside, samePath } from "../core/path";
 
-export type TabDoc = HttpRequestDoc | FolderDoc | CollectionDoc;
+/** Collection runner tab for a collection root or folder (`path`). */
+export interface RunnerDoc {
+  kind: "runner";
+  name: string;
+}
+
+export type TabDoc = HttpRequestDoc | FolderDoc | CollectionDoc | RunnerDoc;
 
 export interface Tab<D extends TabDoc = TabDoc> {
   id: string;
