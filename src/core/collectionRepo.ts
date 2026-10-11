@@ -1,6 +1,7 @@
 import type { FsApi, FsEntry } from "../ipc";
 import { emptyCollection, emptyFolder, type CollectionDoc, type FolderDoc, type HttpRequestDoc, type WebSocketDoc } from "./model";
 import { baseName, dirName, isInside, joinPath, samePath } from "./path";
+import type { TransferNode } from "./transfer/model";
 import {
   parseCollection,
   parseFolder,
@@ -42,13 +43,13 @@ export const FOLDER_FILE = "_folder.yaml";
 export const COLLECTION_FILE = "collection.yaml";
 const RESERVED = new Set([FOLDER_FILE, COLLECTION_FILE]);
 
-function sanitize(name: string, fallback: string): string {
+export function sanitizeName(name: string, fallback: string): string {
   return name.trim().replace(/[\\/:*?"<>|]/g, "-").replace(/\.+$/, "") || fallback;
 }
 
 /** Unique `.yaml` file name for `name`; `taken` holds lower-cased names already in the directory. */
 export function toFileName(name: string, taken: Set<string>): string {
-  const base = sanitize(name, "untitled");
+  const base = sanitizeName(name, "untitled");
   let candidate = `${base}.yaml`;
   let n = 2;
   while (taken.has(candidate.toLowerCase()) || RESERVED.has(candidate.toLowerCase())) candidate = `${base}-${n++}.yaml`;
@@ -56,10 +57,18 @@ export function toFileName(name: string, taken: Set<string>): string {
 }
 
 export function toDirName(name: string, taken: Set<string>): string {
-  const base = sanitize(name, "folder");
+  const base = sanitizeName(name, "folder");
   let candidate = base;
   let n = 2;
   while (taken.has(candidate.toLowerCase())) candidate = `${base}-${n++}`;
+  return candidate;
+}
+
+/** `name`, or `name (2)`, `name (3)` … when a sibling already uses it (case-insensitive). */
+export function uniqueName(name: string, taken: Set<string>): string {
+  let candidate = name;
+  let n = 2;
+  while (taken.has(candidate.toLowerCase())) candidate = `${name} (${n++})`;
   return candidate;
 }
 
@@ -163,6 +172,40 @@ export class CollectionRepo {
     await this.fs.createDir(path);
     await this.saveFolder(path, emptyFolder(name, seq));
     return path;
+  }
+
+  /**
+   * Writes imported nodes into `dir` after its existing items, renaming on name clashes. Never overwrites.
+   * Reads `dir` once and tracks names and seq in memory, so large imports stay linear.
+   */
+  async importItems(dir: string, items: TransferNode[]): Promise<void> {
+    const tree = await this.fs.readTree(dir);
+    const nodes = this.convert(tree, []);
+    await this.writeImported(dir, items, {
+      files: new Set(tree.children.map((c) => c.name.toLowerCase())),
+      names: new Set(nodes.map((n) => n.doc.name.toLowerCase())),
+      seq: nodes.length ? Math.max(...nodes.map((n) => n.doc.seq)) + 1 : 0,
+    });
+  }
+
+  private async writeImported(dir: string, items: TransferNode[], slot: { files: Set<string>; names: Set<string>; seq: number }): Promise<void> {
+    for (const item of items) {
+      const name = uniqueName(item.name, slot.names);
+      slot.names.add(name.toLowerCase());
+      const seq = slot.seq++;
+      if (item.kind === "folder") {
+        const dirEntry = toDirName(name, slot.files);
+        slot.files.add(dirEntry.toLowerCase());
+        const path = joinPath(dir, dirEntry);
+        await this.fs.createDir(path);
+        await this.saveFolder(path, { ...emptyFolder(name, seq), auth: item.auth, scripts: item.scripts });
+        await this.writeImported(path, item.items, { files: new Set(), names: new Set(), seq: 0 });
+      } else {
+        const file = toFileName(name, slot.files);
+        slot.files.add(file.toLowerCase());
+        await this.saveRequest(joinPath(dir, file), { ...item, name, seq });
+      }
+    }
   }
 
   async renameRequest(path: string, name: string): Promise<string> {

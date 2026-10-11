@@ -19,6 +19,7 @@ import {
 import { showMenu, type MenuEntry } from "../common/ContextMenu";
 import { Icon } from "../common/icons";
 import { methodColor, methodLabel } from "../common/methodColor";
+import { openExportDialog } from "../transfer/ExportDialog";
 
 const DRAG_TYPE = "application/x-httptool-node";
 type DropMode = "into" | "before";
@@ -27,7 +28,8 @@ function useActivePath() {
   return useTabs((s) => s.tabs.find((t) => t.id === s.activeId)?.path ?? null);
 }
 
-function nodeMenu(root: string, node: TreeNode): MenuEntry[] {
+function nodeMenu(col: LoadedCollection, node: TreeNode): MenuEntry[] {
+  const root = col.root;
   const items: MenuEntry[] = [];
   if (node.type === "folder") {
     items.push(
@@ -42,6 +44,7 @@ function nodeMenu(root: string, node: TreeNode): MenuEntry[] {
   items.push(
     { label: "Rename", onSelect: () => renameNode(root, node) },
     { label: "Duplicate", onSelect: () => duplicateNode(root, node) },
+    { label: "Export…", onSelect: () => openExportDialog(col, node) },
     "separator",
     { label: "Delete", danger: true, onSelect: () => deleteNode(root, node) },
   );
@@ -111,7 +114,7 @@ function Row({ col, node, depth }: { col: LoadedCollection; node: TreeNode; dept
     if (node.type === "folder") toggle(node.path);
     else openNode(col.root, node);
   };
-  const onMenu = (e: MouseEvent) => showMenu(e, nodeMenu(col.root, node));
+  const onMenu = (e: MouseEvent) => showMenu(e, nodeMenu(col, node));
 
   return (
     <>
@@ -169,6 +172,7 @@ export function CollectionTree({ col }: { col: LoadedCollection }) {
     { label: "New Folder", onSelect: () => newFolder(col.root, col.root) },
     { label: "Collection Settings", onSelect: () => openCollectionSettings(col.root) },
     { label: "Run Collection", onSelect: () => openRunner(col.root, col.root, col.doc.name) },
+    { label: "Export…", onSelect: () => openExportDialog(col) },
     "separator",
     { label: "Copy Path", onSelect: () => navigator.clipboard.writeText(col.root) },
     { label: "Close Collection", onSelect: () => closeCollection(col.root) },

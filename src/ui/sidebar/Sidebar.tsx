@@ -6,6 +6,7 @@ import { Icon } from "../common/icons";
 import { CollectionTree } from "./CollectionTree";
 import { HistoryPanel } from "./HistoryPanel";
 import { openCurlImport } from "../curl/CurlDialogs";
+import { openImportDialog } from "../transfer/ImportDialog";
 
 type Section = "collections" | "history";
 
@@ -32,6 +33,9 @@ export function Sidebar() {
           <>
             <IconButton title="New request" onClick={() => newUntitledRequest()}>
               <Icon name="plus" />
+            </IconButton>
+            <IconButton title="Import (HTTP Tool JSON / OpenAPI)" onClick={() => openImportDialog()}>
+              <Icon name="upload" />
             </IconButton>
             <IconButton title="Import cURL" onClick={() => openCurlImport()}>
               <Icon name="import" />

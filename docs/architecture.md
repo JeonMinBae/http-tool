@@ -70,7 +70,7 @@ scripts/make-dmg.sh     Finder 자동화 없이 dmg 생성
 
 ## IPC 명령
 
-`src-tauri/src/lib.rs`에 등록된 27개 명령. 프론트엔드는 `src/ipc.ts`를 통해서만 호출한다.
+`src-tauri/src/lib.rs`에 등록된 29개 명령. 프론트엔드는 `src/ipc.ts`를 통해서만 호출한다.
 
 | 그룹 | 명령 |
 | --- | --- |
@@ -81,13 +81,14 @@ scripts/make-dmg.sh     Finder 자동화 없이 dmg 생성
 | 히스토리 | `history_append`, `history_list`, `history_get`, `history_clear` |
 | OAuth | `oauth_listen`, `oauth_wait` |
 | WebSocket | `ws_connect`, `ws_send`, `ws_close` |
-| 파일 | `file_save_base64` |
+| 파일 | `file_save_base64`, `file_pick_text`, `dir_create_unique` |
 
 이 밖에 Tauri 플러그인 `dialog`(폴더·파일 선택)와 `opener`(시스템 브라우저 열기)를 쓴다.
 
 ## 보안 경계
 
-- 파일 명령은 `collection_register`로 등록된 컬렉션 루트 안의 경로만 허용하고, 루트 자체의 삭제·이름 변경은 막는다.
+- 컬렉션 파일 명령은 `collection_register`로 등록된 컬렉션 루트 안의 경로만 허용하고, 루트 자체의 삭제·이름 변경은 막는다.
+- 파일 그룹 명령(`file_*`, `dir_create_unique`)은 사용자가 대화상자로 고른 경로에만 쓰인다. 읽기(`file_pick_text`)는 Rust가 직접 대화상자를 띄워 경로를 받으므로 프론트엔드가 읽을 경로를 지정할 수 없고, 32MB를 넘는 파일은 거부한다. `dir_create_unique`는 경로 구분자나 `..`가 든 이름을 거부하고 기존 폴더를 덮어쓰지 않는다.
 - 앱 데이터는 정해진 이름(`globals`, `environments`, `settings`, `workspace`, `oauth-tokens`, `secrets/<sha256>`)만 읽고 쓸 수 있다.
 - 사용자 스크립트는 Worker 안에서 실행되며 `fetch`, `XMLHttpRequest`, `WebSocket`, Tauri 객체 등에 접근할 수 없다. 자세한 내용은 [스크립트](features/scripts.md).
 - HTML 응답 미리보기는 `sandbox=""` iframe에서 스크립트 없이 렌더링한다.

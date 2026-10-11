@@ -16,15 +16,15 @@ import {
   type WebSocketDoc,
 } from "./model";
 
-type Obj = Record<string, unknown>;
+export type Obj = Record<string, unknown>;
 
 const STRINGIFY_OPTIONS = { blockQuote: "literal", lineWidth: 0 } as const;
 
-const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
-const str = (v: unknown, d = ""): string => (typeof v === "string" ? v : typeof v === "number" ? String(v) : d);
+export const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
+export const str = (v: unknown, d = ""): string => (typeof v === "string" ? v : typeof v === "number" ? String(v) : d);
 const bool = (v: unknown, d: boolean): boolean => (typeof v === "boolean" ? v : d);
 const num = (v: unknown, d: number): number => (typeof v === "number" && Number.isFinite(v) ? v : d);
-const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+export const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 
 function load(text: string, kind: string): Obj {
   const data: unknown = parse(text);
@@ -121,8 +121,9 @@ export function variable(v: unknown): Variable {
   return { key: str(o.key), value: str(o.value), enabled: bool(o.enabled, true), secret: bool(o.secret, false) };
 }
 
-export function parseRequest(text: string): HttpRequestDoc {
-  const o = load(text, "http");
+/** Tolerant conversion of an already-parsed object (kind is not checked). */
+export function toRequest(v: unknown): HttpRequestDoc {
+  const o = isObj(v) ? v : {};
   return {
     kind: "http",
     name: str(o.name, "Untitled"),
@@ -139,8 +140,10 @@ export function parseRequest(text: string): HttpRequestDoc {
   };
 }
 
-export function parseFolder(text: string): FolderDoc {
-  const o = load(text, "folder");
+export const parseRequest = (text: string): HttpRequestDoc => toRequest(load(text, "http"));
+
+export function toFolder(v: unknown): FolderDoc {
+  const o = isObj(v) ? v : {};
   return {
     kind: "folder",
     name: str(o.name, "Folder"),
@@ -150,8 +153,10 @@ export function parseFolder(text: string): FolderDoc {
   };
 }
 
-export function parseCollection(text: string): CollectionDoc {
-  const o = load(text, "collection");
+export const parseFolder = (text: string): FolderDoc => toFolder(load(text, "folder"));
+
+export function toCollection(v: unknown): CollectionDoc {
+  const o = isObj(v) ? v : {};
   return {
     kind: "collection",
     name: str(o.name, "Collection"),
@@ -161,8 +166,10 @@ export function parseCollection(text: string): CollectionDoc {
   };
 }
 
-export function parseWebSocket(text: string): WebSocketDoc {
-  const o = load(text, "websocket");
+export const parseCollection = (text: string): CollectionDoc => toCollection(load(text, "collection"));
+
+export function toWebSocket(v: unknown): WebSocketDoc {
+  const o = isObj(v) ? v : {};
   return {
     kind: "websocket",
     name: str(o.name, "WebSocket"),
@@ -176,6 +183,8 @@ export function parseWebSocket(text: string): WebSocketDoc {
     }),
   };
 }
+
+export const parseWebSocket = (text: string): WebSocketDoc => toWebSocket(load(text, "websocket"));
 
 /** Kind of a request file without fully parsing it. */
 export function fileKind(text: string): string | undefined {

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { FsApi, FsEntry } from "../ipc";
-import { emptyRequest } from "./model";
+import { emptyFolder, emptyRequest } from "./model";
 import { baseName, dirName } from "./path";
 import { serializeFolder, serializeRequest, parseRequest, parseFolder } from "./yaml";
 import { CollectionRepo, toDirName, toFileName } from "./collectionRepo";
@@ -187,5 +187,53 @@ describe("websocket files", () => {
   it("dispatches folder and request renames", async () => {
     expect(await repo.rename({ type: "folder", path: "/c/users" }, "People")).toBe("/c/People");
     expect(await repo.rename({ type: "request", path: "/c/root.yaml" }, "Top")).toBe("/c/Top.yaml");
+  });
+});
+
+describe("importItems", () => {
+  const DIR = "/c/imported";
+  beforeEach(() => {
+    fs.dirs.add(DIR);
+  });
+
+  it("appends after existing items and suffixes clashing names", async () => {
+    await repo.createRequest(DIR, emptyRequest("Get user"));
+    await repo.importItems(DIR, [
+      emptyRequest("Get user"),
+      { ...emptyFolder("F"), auth: { type: "bearer", token: "{{t}}" }, items: [emptyRequest("Get user"), emptyRequest("Get user")] },
+    ]);
+    const col = await repo.load(DIR);
+    expect(col.children.map((n) => [n.doc.name, n.doc.seq])).toEqual([
+      ["Get user", 0],
+      ["Get user (2)", 1],
+      ["F", 2],
+    ]);
+    const folder = col.children[2];
+    expect(folder.type === "folder" && folder.doc.auth).toEqual({ type: "bearer", token: "{{t}}" });
+    expect(folder.type === "folder" && folder.children.map((n) => n.doc.name)).toEqual(["Get user", "Get user (2)"]);
+  });
+
+  it("does not modify the existing request", async () => {
+    const path = await repo.createRequest(DIR, { ...emptyRequest("A"), url: "keep" });
+    await repo.importItems(DIR, [{ ...emptyRequest("A"), url: "new" }]);
+    expect(parseRequest(fs.files.get(path)!).url).toBe("keep");
+  });
+
+  it("reads the target directory once regardless of item count", async () => {
+    let reads = 0;
+    const readTree = fs.readTree.bind(fs);
+    fs.readTree = async (root: string) => {
+      reads++;
+      return readTree(root);
+    };
+    await repo.importItems(DIR, [
+      ...Array.from({ length: 20 }, (_, i) => emptyRequest(`R${i % 5}`)),
+      { ...emptyFolder("F"), items: [emptyRequest("A"), emptyRequest("A")] },
+    ]);
+    expect(reads).toBe(1);
+    const col = await repo.load(DIR);
+    expect(col.children).toHaveLength(21);
+    expect(col.children.map((n) => n.doc.seq)).toEqual([...Array(21).keys()]);
+    expect(new Set(col.children.map((n) => n.doc.name)).size).toBe(21);
   });
 });

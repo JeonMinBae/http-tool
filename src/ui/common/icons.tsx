@@ -17,6 +17,7 @@ const PATHS = {
   trash: "M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 002 2h8a2 2 0 002-2l1-12M9 7V4h6v3",
   code: "M8 8l-4 4 4 4M16 8l4 4-4 4",
   import: "M12 3v12M7 10l5 5 5-5M5 21h14",
+  upload: "M12 21V9M7 14l5-5 5 5M5 3h14",
   terminal: "M4 17l6-5-6-5M12 19h8",
   play: "M7 5l12 7-12 7z",
   stop: "M6 6h12v12H6z",

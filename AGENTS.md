@@ -1,6 +1,6 @@
 # HTTP Tool
 
-macOS·Windows용 가벼운 HTTP 클라이언트. Postman·Apidog와 비슷한 화면에 필요한 기능만 담았다 — 요청 편집·저장(폴더 기반 YAML), 변수·환경, Pre/Post 스크립트(`pm` API), OAuth 2.0, cURL 변환, 컬렉션 러너, SSE·WebSocket.
+macOS·Windows용 가벼운 HTTP 클라이언트. Postman·Apidog와 비슷한 화면에 필요한 기능만 담았다 — 요청 편집·저장(폴더 기반 YAML), 변수·환경, Pre/Post 스크립트(`pm` API), OAuth 2.0, cURL 변환, Import/Export(JSON·OpenAPI), 컬렉션 러너, SSE·WebSocket.
 
 ## 기술 스택
 
@@ -53,6 +53,7 @@ docs/          문서
 | [features/scripts](docs/features/scripts.md) | 실행 순서, `pm` API, 샌드박스 |
 | [features/response](docs/features/response.md) | Body 보기 방식, 보낸 요청 확인 |
 | [features/curl](docs/features/curl.md) | cURL 가져오기 옵션, 내보내기 |
+| [features/import-export](docs/features/import-export.md) | HTTP Tool JSON·OpenAPI 가져오기/내보내기, 변환 규칙 |
 | [features/cookies](docs/features/cookies.md) | 전역 쿠키 저장소, 관리 화면 |
 | [features/history](docs/features/history.md) | 기록·보관 규칙 |
 | [features/settings](docs/features/settings.md) | 타임아웃, 리다이렉트, SSL, 프록시 |
