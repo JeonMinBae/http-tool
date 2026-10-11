@@ -7,6 +7,7 @@ import { useWorkspace } from "../../state/workspace";
 import { importAsCollection, importIntoFolder } from "../actions";
 import { Button } from "../common/Button";
 import { Modal, openDialog } from "../common/dialogs";
+import { Spinner } from "../common/Spinner";
 
 interface Target {
   root: string;
@@ -126,6 +127,7 @@ function ImportBody({ close }: { close: () => void }) {
         <>
           <Button onClick={() => setPlan(null)}>Back</Button>
           <Button variant="primary" disabled={!canImport} onClick={run}>
+            {busy && <Spinner />}
             {plan.kind === "collection" ? "Choose location & Import" : "Import"}
           </Button>
         </>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { prettyJson } from "../../core/responseFormat";
 import { useStreams } from "../../state/streams";
 import { Button } from "../common/Button";
+import { PulseDot } from "../common/Spinner";
 
 export function EventsView({ tabId }: { tabId: string }) {
   const stream = useStreams((s) => s.byTab[tabId]);
@@ -17,8 +18,16 @@ export function EventsView({ tabId }: { tabId: string }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="mb-2 flex items-center gap-3">
-        <span className={stream.status === "open" ? "text-ok" : stream.status === "error" ? "text-danger" : "text-muted"}>
-          {stream.status === "open" ? "● Connected" : stream.status === "error" ? `Error: ${stream.error}` : "Closed"}
+        <span className={`flex items-center gap-1.5 ${stream.status === "open" ? "text-ok" : stream.status === "error" ? "text-danger" : "text-muted"}`}>
+          {stream.status === "open" ? (
+            <>
+              <PulseDot /> Connected
+            </>
+          ) : stream.status === "error" ? (
+            `Error: ${stream.error}`
+          ) : (
+            "Closed"
+          )}
         </span>
         <span className="text-muted">{count} events</span>
         <label className="flex items-center gap-1 text-muted">

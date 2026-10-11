@@ -4,11 +4,12 @@ import { base64ToUtf8 } from "../../core/encoding";
 import { executeDoc, type ExecutionOutcome } from "../../core/execute";
 import type { HttpRequestDoc } from "../../core/model";
 import { samePath } from "../../core/path";
-import { runCollection, type RunItem, type RunResult, type RunSummary } from "../../core/runner";
+import { runCollection, runProgress, type RunItem, type RunResult, type RunSummary } from "../../core/runner";
 import { useWorkspace } from "../../state/workspace";
 import { Button } from "../common/Button";
 import { Icon } from "../common/icons";
 import { methodColor, methodLabel } from "../common/methodColor";
+import { Spinner } from "../common/Spinner";
 
 interface Row extends RunItem {
   doc: HttpRequestDoc;
@@ -56,6 +57,7 @@ export function RunnerView({ root, path }: { root: string; path: string }) {
   const [summary, setSummary] = useState<RunSummary | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [running, setRunning] = useState(false);
+  const [planned, setPlanned] = useState<{ names: string[]; iterations: number } | null>(null);
   const abort = useRef<AbortController | null>(null);
   const dragFrom = useRef<number | null>(null);
 
@@ -83,6 +85,7 @@ export function RunnerView({ root, path }: { root: string; path: string }) {
     setResults([]);
     setSummary(null);
     setSelected(null);
+    setPlanned({ names: items.map((r) => r.name), iterations: Math.max(1, iterations) });
     const docs = new Map(items.map((r) => [r.path, r.doc]));
     const s = await runCollection(
       {
@@ -100,6 +103,7 @@ export function RunnerView({ root, path }: { root: string; path: string }) {
   };
 
   const sel = selected !== null ? results[selected] : undefined;
+  const progress = running && planned ? runProgress(planned.names.length, planned.iterations, results.length) : null;
   const input = "rounded border border-line bg-elevated px-2 py-1";
 
   return (
@@ -169,9 +173,18 @@ export function RunnerView({ root, path }: { root: string; path: string }) {
               {summary.stopped && " · stopped"}
             </span>
           ) : (
-            running && <span className="text-muted">Running… {results.length} done</span>
+            progress && (
+              <span className="flex items-center gap-1.5 text-muted">
+                <Spinner /> Running… {results.length} / {progress.total}
+              </span>
+            )
           )}
         </div>
+        {progress && (
+          <div className="h-0.5 shrink-0 bg-line">
+            <div className="h-full bg-accent transition-[width] duration-150" style={{ width: `${progress.ratio * 100}%` }} />
+          </div>
+        )}
         <div className="min-h-0 flex-1 overflow-auto">
           <table className="w-full border-collapse text-left">
             <thead className="sticky top-0 bg-bg text-[12px] text-muted">
@@ -200,6 +213,16 @@ export function RunnerView({ root, path }: { root: string; path: string }) {
                   </tr>
                 );
               })}
+              {progress?.current && planned && (
+                <tr className="border-b border-line text-muted">
+                  <td className="px-3 py-1">{progress.current.iteration}</td>
+                  <td className="px-2 py-1" colSpan={4}>
+                    <span className="flex items-center gap-1.5">
+                      <Spinner /> {planned.names[progress.current.index]}
+                    </span>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { runCollection, type RunOptions, type RunOutcome } from "./runner";
+import { runCollection, runProgress, type RunOptions, type RunOutcome } from "./runner";
 
 const ok = (): RunOutcome => ({ result: { status: 200, elapsedMs: 5 }, tests: [{ name: "t", passed: true }] });
 const failedTest = (): RunOutcome => ({ result: { status: 200, elapsedMs: 5 }, tests: [{ name: "t", passed: false, error: "x" }] });
@@ -52,5 +52,20 @@ describe("runCollection", () => {
     const elapsed = Date.now() - started;
     expect(elapsed).toBeGreaterThanOrEqual(35);
     expect(elapsed).toBeLessThan(75);
+  });
+});
+
+describe("runProgress", () => {
+  it("reports the next item across iterations", () => {
+    expect(runProgress(3, 2, 0)).toEqual({ total: 6, ratio: 0, current: { iteration: 1, index: 0 } });
+    expect(runProgress(3, 2, 4)).toEqual({ total: 6, ratio: 4 / 6, current: { iteration: 2, index: 1 } });
+  });
+
+  it("has no current item when everything is done", () => {
+    expect(runProgress(3, 2, 6)).toEqual({ total: 6, ratio: 1, current: null });
+  });
+
+  it("handles an empty run", () => {
+    expect(runProgress(0, 1, 0)).toEqual({ total: 0, ratio: 0, current: null });
   });
 });
