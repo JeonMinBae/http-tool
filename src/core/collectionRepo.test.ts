@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { FsApi, FsEntry } from "../ipc";
-import { emptyRequest } from "./model";
+import { emptyFolder, emptyRequest } from "./model";
 import { baseName, dirName } from "./path";
 import { serializeFolder, serializeRequest, parseRequest, parseFolder } from "./yaml";
 import { CollectionRepo, toDirName, toFileName } from "./collectionRepo";
@@ -167,5 +167,35 @@ describe("websocket files", () => {
     expect(col.children.find((c) => c.doc.name === "Chat")?.type).toBe("websocket");
     const path = await repo.renameRequest("/c/chat.yaml", "Chat 2");
     expect((await repo.readRequest(path)).kind).toBe("websocket");
+  });
+});
+
+describe("importItems", () => {
+  const DIR = "/c/imported";
+  beforeEach(() => {
+    fs.dirs.add(DIR);
+  });
+
+  it("appends after existing items and suffixes clashing names", async () => {
+    await repo.createRequest(DIR, emptyRequest("Get user"));
+    await repo.importItems(DIR, [
+      emptyRequest("Get user"),
+      { ...emptyFolder("F"), auth: { type: "bearer", token: "{{t}}" }, items: [emptyRequest("Get user"), emptyRequest("Get user")] },
+    ]);
+    const col = await repo.load(DIR);
+    expect(col.children.map((n) => [n.doc.name, n.doc.seq])).toEqual([
+      ["Get user", 0],
+      ["Get user (2)", 1],
+      ["F", 2],
+    ]);
+    const folder = col.children[2];
+    expect(folder.type === "folder" && folder.doc.auth).toEqual({ type: "bearer", token: "{{t}}" });
+    expect(folder.type === "folder" && folder.children.map((n) => n.doc.name)).toEqual(["Get user", "Get user (2)"]);
+  });
+
+  it("does not modify the existing request", async () => {
+    const path = await repo.createRequest(DIR, { ...emptyRequest("A"), url: "keep" });
+    await repo.importItems(DIR, [{ ...emptyRequest("A"), url: "new" }]);
+    expect(parseRequest(fs.files.get(path)!).url).toBe("keep");
   });
 });
