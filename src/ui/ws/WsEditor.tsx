@@ -215,7 +215,7 @@ export function WsEditor({ tab }: { tab: Tab<WebSocketDoc> }) {
                     </div>
                   </div>
                 )}
-                {section === "headers" && <KeyValueTable rows={d.headers} makeRow={kv} onChange={(headers) => patch({ headers })} />}
+                {section === "headers" && <KeyValueTable rows={d.headers} makeRow={kv} extensions={varExt} onChange={(headers) => patch({ headers })} />}
                 {section === "settings" && (
                   <label className="grid grid-cols-[160px_1fr] items-center gap-3">
                     <span>Subprotocols</span>

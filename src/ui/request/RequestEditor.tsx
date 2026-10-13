@@ -61,10 +61,11 @@ export function RequestEditor({ tab }: { tab: Tab<HttpRequestDoc> }) {
           <KeyValueTable
             rows={d.params}
             makeRow={kv}
+            extensions={varExt}
             onChange={(params) => update<HttpRequestDoc>(tab.id, (x) => ({ ...x, params, url: syncUrlFromParams(x.url, params) }))}
           />
         )}
-        {section === "headers" && <KeyValueTable rows={d.headers} makeRow={kv} onChange={(headers) => patch({ headers })} />}
+        {section === "headers" && <KeyValueTable rows={d.headers} makeRow={kv} extensions={varExt} onChange={(headers) => patch({ headers })} />}
         {section === "body" && <BodyEditor body={d.body} extensions={varExt} onChange={(body) => patch({ body })} />}
         {section === "auth" && <AuthEditor auth={d.auth} root={tab.root} onChange={(auth) => patch({ auth })} />}
         {section === "cookies" && (
@@ -72,7 +73,7 @@ export function RequestEditor({ tab }: { tab: Tab<HttpRequestDoc> }) {
             <p className="mb-2 text-[12px] text-muted">
               Sent as a Cookie header. When set, cookies from the cookie jar are not added to this request.
             </p>
-            <KeyValueTable rows={d.cookies} makeRow={kv} onChange={(cookies) => patch({ cookies })} />
+            <KeyValueTable rows={d.cookies} makeRow={kv} extensions={varExt} onChange={(cookies) => patch({ cookies })} />
           </>
         )}
         {section === "scripts" && <ScriptsEditor scripts={d.scripts} onChange={(scripts) => patch({ scripts })} />}
