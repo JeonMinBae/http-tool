@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { PathParam } from "../../core/model";
-import { applyBulkValues, visiblePathParams } from "../../core/pathParams";
+import { applyBulkValues, syncPathParams, visiblePathParams } from "../../core/pathParams";
 import { toBulk } from "../common/KeyValueTable";
 import { VarInput } from "../editor/VarInput";
 
@@ -10,8 +10,7 @@ const cell = "h-7 w-full bg-transparent px-2 outline-none placeholder:text-muted
 export function PathParamsTable({ url, rows, onChange }: { url: string; rows: PathParam[]; onChange: (rows: PathParam[]) => void }) {
   const [bulk, setBulk] = useState<string | null>(null);
   const visible = visiblePathParams(url, rows);
-  // Visible rows missing from the draft are added so edits and bulk text can target them.
-  const full = [...rows, ...visible.filter((v) => !rows.some((r) => r.key === v.key))];
+  const full = syncPathParams(url, rows);
   const setRow = (key: string, patch: Partial<PathParam>) => onChange(full.map((r) => (r.key === key ? { ...r, ...patch } : r)));
 
   if (bulk !== null) {
@@ -29,7 +28,8 @@ export function PathParamsTable({ url, rows, onChange }: { url: string; rows: Pa
           placeholder="name: value"
           onChange={(e) => {
             setBulk(e.target.value);
-            onChange(applyBulkValues(full, e.target.value));
+            // Only names in the URL take bulk values; remembered rows keep theirs.
+            onChange([...applyBulkValues(visible, e.target.value), ...full.slice(visible.length)]);
           }}
         />
       </div>

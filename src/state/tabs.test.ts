@@ -23,6 +23,15 @@ describe("tabs store", () => {
     expect(isDirty(s().tabs[0])).toBe(false);
   });
 
+  it("keeps edits made while saving and leaves the tab dirty", () => {
+    const id = s().open("/c", "/c/a.yaml", emptyRequest("A"));
+    const started = s().tabs[0].draft;
+    s().update<HttpRequestDoc>(id, (d) => ({ ...d, url: "http://edited" }));
+    s().markSaved(id, "/c", "/c/a.yaml", { ...emptyRequest("A"), url: "http://saved" }, started);
+    expect((s().tabs[0].draft as HttpRequestDoc).url).toBe("http://edited");
+    expect(isDirty(s().tabs[0])).toBe(true);
+  });
+
   it("records savedAt on save", () => {
     const id = s().open("/c", "/c/a.yaml", emptyRequest("A"));
     expect(s().tabs[0].savedAt).toBeUndefined();

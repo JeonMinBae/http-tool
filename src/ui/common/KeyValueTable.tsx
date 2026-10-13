@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { KeyValue } from "../../core/model";
 import { Icon } from "./icons";
 import { VarInput } from "../editor/VarInput";
@@ -55,8 +55,12 @@ export function KeyValueTable<T extends KeyValue>({
   readOnly,
 }: KeyValueTableProps<T>) {
   const [bulk, setBulk] = useState<string | null>(null);
+  useEffect(() => {
+    if (!allowBulk) setBulk(null);
+  }, [allowBulk]);
 
-  if (bulk !== null) {
+  // allowBulk can turn off while the editor is open (e.g. secrets hidden again).
+  if (bulk !== null && allowBulk) {
     return (
       <div>
         <div className="mb-1 flex justify-end">

@@ -225,7 +225,7 @@ export async function saveTab(id: string): Promise<boolean> {
     }
     if (tab.path && tab.root) {
       await collectionRepo.saveRequest(tab.path, doc);
-      tabs().markSaved(id, tab.root, tab.path, doc);
+      tabs().markSaved(id, tab.root, tab.path, doc, tab.draft);
       await ws().reload(tab.root);
       return true;
     }

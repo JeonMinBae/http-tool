@@ -10,6 +10,8 @@ export function ListItemsTable({ items, onChange, masked }: { items: KeyValue[];
       rows={items}
       onChange={onChange}
       makeRow={makeItem}
+      // Bulk text would show masked values, and `key: value` lines cannot round-trip keys containing ':'.
+      allowBulk={!masked && !items.some((i) => i.key.includes(":"))}
       keyPlaceholder="Item"
       valuePlaceholder="Value"
       renderValue={(row, update) => (
