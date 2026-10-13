@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyBulkValues, pathParamNames, syncPathParams, visiblePathParams } from "./pathParams";
+import { applyBulkValues, paramsBadge, pathParamNames, syncPathParams, visiblePathParams } from "./pathParams";
 
 const p = (key: string, value = "", description = "") => ({ key, value, description });
 
@@ -32,4 +32,20 @@ describe("applyBulkValues", () => {
   it("updates values of known names only and keeps descriptions", () => {
     expect(applyBulkValues([p("id", "1", "d"), p("n", "x")], "id: 2\nother: 3\n//n: y")).toEqual([p("id", "2", "d"), p("n", "x")]);
   });
+});
+
+describe("paramsBadge", () => {
+  it("counts enabled query params plus every path param, empty values included", () => {
+    const params = [
+      { key: "a", value: "1", enabled: true },
+      { key: "b", value: "2", enabled: false },
+      { key: "", value: "", enabled: true },
+    ];
+    expect(paramsBadge({ url: "/u/{id}/{name}", params })).toBe(3);
+  });
+});
+
+it("paramsBadge matches the Apidog example (3 query + 1 path)", () => {
+  const params = ["from", "to", "tool_id"].map((key) => ({ key, value: "", enabled: true }));
+  expect(paramsBadge({ url: "/execute/{path}?from=1&to=2&tool_id", params })).toBe(4);
 });

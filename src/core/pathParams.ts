@@ -1,4 +1,4 @@
-import type { PathParam } from "./model";
+import type { HttpRequestDoc, PathParam } from "./model";
 import { splitUrl } from "./params";
 
 /** `{name}` but not part of `{{var}}`: the lookarounds reject a neighbouring brace. */
@@ -54,3 +54,7 @@ export function applyPathParams(url: string, rows: PathParam[], t: (v: string) =
   }
   return { url: out + url.slice(at), empty: [...empty] };
 }
+
+/** Params tab badge: enabled query params plus every path param in the URL (empty values count too). */
+export const paramsBadge = (d: Pick<HttpRequestDoc, "url" | "params">) =>
+  d.params.filter((p) => p.enabled && p.key).length + pathParamNames(d.url).length;

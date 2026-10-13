@@ -2,7 +2,9 @@ import { useState } from "react";
 import type { HttpRequestDoc, KeyValue } from "../../core/model";
 import { syncUrlFromParams } from "../../core/params";
 import { useTabs, type Tab } from "../../state/tabs";
+import { paramsBadge, visiblePathParams } from "../../core/pathParams";
 import { KeyValueTable } from "../common/KeyValueTable";
+import { PathParamsTable } from "./PathParamsTable";
 import { AuthEditor } from "./AuthEditor";
 import { BodyEditor } from "./BodyEditor";
 import { ScriptsEditor } from "./ScriptsEditor";
@@ -49,7 +51,7 @@ export function RequestEditor({ tab }: { tab: Tab<HttpRequestDoc> }) {
           active={section}
           onSelect={setSection}
           sections={[
-            { id: "params", label: "Params", badge: count(d.params) },
+            { id: "params", label: "Params", badge: paramsBadge(d) },
             { id: "headers", label: "Headers", badge: count(d.headers) },
             { id: "body", label: "Body", badge: d.body.type === "none" ? undefined : "●" },
             { id: "auth", label: "Auth", badge: d.auth.type === "inherit" || d.auth.type === "none" ? undefined : "●" },
@@ -60,11 +62,20 @@ export function RequestEditor({ tab }: { tab: Tab<HttpRequestDoc> }) {
         />
         <div className="min-h-0 flex-1 overflow-auto p-3">
           {section === "params" && (
-            <KeyValueTable
-              rows={d.params}
-              makeRow={kv}
-              onChange={(params) => update<HttpRequestDoc>(tab.id, (x) => ({ ...x, params, url: syncUrlFromParams(x.url, params) }))}
-            />
+            <>
+              <h3 className="mb-1 text-[12px] text-muted">Query Params</h3>
+              <KeyValueTable
+                rows={d.params}
+                makeRow={kv}
+                onChange={(params) => update<HttpRequestDoc>(tab.id, (x) => ({ ...x, params, url: syncUrlFromParams(x.url, params) }))}
+              />
+              {visiblePathParams(d.url, d.pathParams).length > 0 && (
+                <>
+                  <h3 className="mb-1 mt-4 text-[12px] text-muted">Path Params</h3>
+                  <PathParamsTable url={d.url} rows={d.pathParams} onChange={(pathParams) => patch({ pathParams })} />
+                </>
+              )}
+            </>
           )}
           {section === "headers" && <KeyValueTable rows={d.headers} makeRow={kv} onChange={(headers) => patch({ headers })} />}
           {section === "body" && <BodyEditor body={d.body} extensions={varExt} onChange={(body) => patch({ body })} />}
