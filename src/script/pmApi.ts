@@ -2,7 +2,7 @@ import { expect as chaiExpect } from "chai";
 import CryptoJS from "crypto-js";
 import lodash from "lodash";
 import type { Body } from "../core/model";
-import { interpolate, resolveVar, type VarScope, type VarScopes } from "../core/variables";
+import { interpolate, isListMarker, resolveVar, setScopeVar, visibleVars, type VarScope, type VarScopes } from "../core/variables";
 import type { LogEntry, ScriptInput, ScriptRequest, ScriptResponse, ScriptSendRequest, TestResult } from "./protocol";
 
 export interface PmHooks {
@@ -108,11 +108,11 @@ export function createPm(input: ScriptInput, hooks: PmHooks) {
         console.warn(`pm.environment.set("${k}") ignored: no active environment`);
         return;
       }
-      scopes[scope][k] = typeof v === "string" ? v : stringify(v);
+      setScopeVar(scopes[scope], k, typeof v === "string" ? v : stringify(v));
     },
     unset: (k: string) => void delete scopes[scope][k],
     clear: () => void (scopes[scope] = {}),
-    toObject: () => ({ ...scopes[scope] }),
+    toObject: () => Object.fromEntries(Object.entries(scopes[scope]).filter(([k]) => !isListMarker(k))),
     replaceIn: (t: string) => interpolate(t, scopes).value,
   });
 
@@ -198,10 +198,10 @@ export function createPm(input: ScriptInput, hooks: PmHooks) {
     variables: {
       get: (k: string) => resolveVar(k, scopes),
       has: (k: string) => resolveVar(k, scopes) !== undefined,
-      set: (k: string, v: unknown) => void (scopes.local[k] = typeof v === "string" ? v : stringify(v)),
+      set: (k: string, v: unknown) => setScopeVar(scopes.local, k, typeof v === "string" ? v : stringify(v)),
       unset: (k: string) => void delete scopes.local[k],
       replaceIn: (t: string) => interpolate(t, scopes).value,
-      toObject: () => ({ ...scopes.global, ...scopes.collection, ...scopes.environment, ...scopes.local }),
+      toObject: () => Object.fromEntries(visibleVars(scopes).map((x) => [x.name, x.value])),
     },
     environment: scopeApi("environment"),
     collectionVariables: scopeApi("collection"),
