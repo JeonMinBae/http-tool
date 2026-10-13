@@ -1,5 +1,5 @@
 import type { LoadedCollection, TreeNode } from "./collectionRepo";
-import type { Environment, HttpMethod, Variable } from "./model";
+import { isListVar, type Environment, type HttpMethod, type Variable } from "./model";
 
 export type SearchHit =
   | { kind: "request"; label: string; detail: string; url: string; method: HttpMethod; root: string; path: string; score: number }
@@ -28,6 +28,16 @@ export function buildIndex(input: { collections: LoadedCollection[]; globals: Va
   const addVars = (vars: Variable[], detail: string, target: VariableTarget) => {
     for (const v of vars) {
       if (!v.key) continue;
+      if (isListVar(v)) {
+        // A list has no value of its own; only its items are indexed.
+        for (const i of v.items) {
+          if (!i.key) continue;
+          const label = `${v.key}:${i.key}`;
+          const hit = { kind: "variable" as const, label, detail, value: v.secret ? "" : i.value, secret: v.secret, target };
+          entries.push({ hit, name: label.toLowerCase(), rest: v.secret ? "" : i.value.toLowerCase() });
+        }
+        continue;
+      }
       const hit = { kind: "variable" as const, label: v.key, detail, value: v.secret ? "" : v.value, secret: v.secret, target };
       // Secret values are never searchable.
       entries.push({ hit, name: v.key.toLowerCase(), rest: v.secret ? "" : v.value.toLowerCase() });

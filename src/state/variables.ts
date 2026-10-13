@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { appDataApi } from "../ipc";
 import type { Environment, Variable } from "../core/model";
-import { variable } from "../core/yaml";
+import { storedVariable, variable } from "../core/yaml";
 
 interface EnvironmentsDoc {
   activeId: string | null;
@@ -29,8 +29,8 @@ export const useVariables = create<VariablesState>((set, get) => {
   const persistEnvironments = () =>
     appDataApi.write("environments", {
       activeId: get().activeEnvironmentId,
-      items: get().environments,
-    } satisfies EnvironmentsDoc);
+      items: get().environments.map((e) => ({ ...e, variables: e.variables.map(storedVariable) })),
+    });
 
   return {
     globals: [],
@@ -47,7 +47,7 @@ export const useVariables = create<VariablesState>((set, get) => {
     },
     async saveGlobals(globals) {
       set({ globals });
-      await appDataApi.write("globals", globals);
+      await appDataApi.write("globals", globals.map(storedVariable));
     },
     async saveEnvironments(environments) {
       const active = get().activeEnvironmentId;

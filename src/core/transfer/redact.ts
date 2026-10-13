@@ -1,4 +1,4 @@
-import type { Auth, Variable } from "../model";
+import { isListVar, type Auth, type Variable } from "../model";
 import type { TransferNode } from "./model";
 
 export const isVarRef = (s: string) => /^\s*\{\{[^{}]+\}\}\s*$/.test(s);
@@ -23,7 +23,11 @@ export function redactAuth(a: Auth): Auth {
   }
 }
 
-export const redactVariables = (vars: Variable[]): Variable[] => vars.map((v) => (v.secret ? { ...v, value: blank(v.value) } : v));
+export const redactVariables = (vars: Variable[]): Variable[] =>
+  vars.map((v) => {
+    if (!v.secret) return v;
+    return isListVar(v) ? { ...v, items: v.items.map((i) => ({ ...i, value: blank(i.value) })) } : { ...v, value: blank(v.value) };
+  });
 
 export function redactNodes(items: TransferNode[]): TransferNode[] {
   return items.map((n) => {

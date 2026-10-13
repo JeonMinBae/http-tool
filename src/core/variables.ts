@@ -106,3 +106,7 @@ export function interpolate(text: string, s: VarScopes, depth = 0): { value: str
 export function referencedVars(text: string): string[] {
   return [...new Set([...text.matchAll(PATTERN)].map((m) => m[1]))];
 }
+
+/** Names whose values must be masked: secret text variables and every item of a secret list. */
+export const secretNames = (vars: Variable[]): string[] =>
+  vars.filter((v) => v.secret).flatMap((v) => (isListVar(v) ? v.items.map((i) => `${v.key}:${i.key}`) : [v.key]));

@@ -138,3 +138,20 @@ describe("object parsers", () => {
     expect(toWebSocket("nope").name).toBe("WebSocket");
   });
 });
+
+it("writes list variables in the documented shape and blanks secret list values", () => {
+  const col = {
+    ...emptyCollection("c"),
+    variables: [
+      { key: "tool", value: "", enabled: true, secret: true, type: "list" as const, items: [{ key: "A", value: "qq", enabled: true }] },
+      { key: "t", value: "1", enabled: true, secret: false },
+    ],
+  };
+  const text = serializeCollection(col);
+  expect(text).toContain("type: list");
+  expect(text).not.toContain("qq");
+  expect(parseCollection(text).variables).toEqual([
+    { key: "tool", value: "", enabled: true, secret: true, type: "list", items: [{ key: "A", value: "", enabled: true }] },
+    { key: "t", value: "1", enabled: true, secret: false },
+  ]);
+});

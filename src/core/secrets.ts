@@ -1,4 +1,4 @@
-import type { Variable } from "./model";
+import { isListVar, type Variable } from "./model";
 
 export type SecretValues = Record<string, string>;
 
@@ -11,10 +11,16 @@ export async function secretsName(root: string): Promise<`secrets/${string}`> {
 
 /** Fills secret variable values from the local secret store. */
 export function applySecrets(vars: Variable[], secrets: SecretValues): Variable[] {
-  return vars.map((v) => (v.secret ? { ...v, value: secrets[v.key] ?? "" } : v));
+  return vars.map((v) => {
+    if (!v.secret) return v;
+    if (isListVar(v)) return { ...v, items: v.items.map((i) => ({ ...i, value: secrets[`${v.key}:${i.key}`] ?? "" })) };
+    return { ...v, value: secrets[v.key] ?? "" };
+  });
 }
 
-/** Collects the values of secret variables for the local secret store. */
+/** Collects secret values for the local secret store; list items are keyed `list:key` (plain names never contain ':'). */
 export function extractSecrets(vars: Variable[]): SecretValues {
-  return Object.fromEntries(vars.filter((v) => v.secret && v.key).map((v) => [v.key, v.value]));
+  return Object.fromEntries(
+    vars.filter((v) => v.secret && v.key).flatMap((v) => (isListVar(v) ? v.items.filter((i) => i.key).map((i) => [`${v.key}:${i.key}`, i.value]) : [[v.key, v.value]])),
+  );
 }

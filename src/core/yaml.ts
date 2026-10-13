@@ -8,6 +8,7 @@ import {
   type FormField,
   type HttpMethod,
   type HttpRequestDoc,
+  isListVar,
   type KeyValue,
   type PathParam,
   type RawLanguage,
@@ -120,8 +121,15 @@ function method(v: unknown): HttpMethod {
 
 export function variable(v: unknown): Variable {
   const o = isObj(v) ? v : {};
-  return { key: str(o.key), value: str(o.value), enabled: bool(o.enabled, true), secret: bool(o.secret, false) };
+  const base = { key: str(o.key), enabled: bool(o.enabled, true), secret: bool(o.secret, false) };
+  return o.type === "list" ? { ...base, value: "", type: "list", items: arr(o.items).map(keyValue) } : { ...base, value: str(o.value) };
 }
+
+/** On-disk shape: text variables keep the old fields; lists drop the unused value. */
+export const storedVariable = (v: Variable) =>
+  isListVar(v)
+    ? { key: v.key, type: "list", enabled: v.enabled, secret: v.secret, items: v.items }
+    : { key: v.key, value: v.value, enabled: v.enabled, secret: v.secret };
 
 function pathParam(v: unknown): PathParam {
   const o = isObj(v) ? v : {};
@@ -210,6 +218,8 @@ export const serializeFolder = (doc: FolderDoc): string => stringify(doc, STRING
 
 /** Secret variable values are never written to the collection file. */
 export function serializeCollection(doc: CollectionDoc): string {
-  const variables = doc.variables.map((v) => (v.secret ? { ...v, value: "" } : v));
+  const variables = doc.variables
+    .map((v) => (!v.secret ? v : isListVar(v) ? { ...v, items: v.items.map((i) => ({ ...i, value: "" })) } : { ...v, value: "" }))
+    .map(storedVariable);
   return stringify({ ...doc, variables }, STRINGIFY_OPTIONS);
 }
