@@ -34,7 +34,7 @@
 
 ## 아이콘
 
-`src-tauri/icons/`의 아이콘은 Tauri 템플릿 기본 로고다. 바꾸려면 1024×1024 PNG를 준비해 `npx tauri icon <파일>`을 실행한다.
+`src-tauri/icons/`의 아이콘은 앱 로고(원형 배경의 HTTP 모니터)로 만든 것이다. 원 바깥은 투명하다. 바꾸려면 1024×1024 PNG를 준비해 `npx tauri icon <파일>`을 실행한다. 데스크톱 앱이므로 이때 생기는 `android/`, `ios/`, `64x64.png`는 지운다.
 
 ## 테스트 범위
 
