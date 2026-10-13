@@ -59,6 +59,7 @@ pub fn run() {
             fs_commands::fs_rename,
             fs_commands::fs_copy,
             fs_commands::fs_delete,
+            fs_commands::fs_open_dir,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

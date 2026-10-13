@@ -1,5 +1,5 @@
 import { open as openDialogPicker, save as saveDialogPicker } from "@tauri-apps/plugin-dialog";
-import { fileApi } from "../ipc";
+import { fileApi, shellApi } from "../ipc";
 import { sanitizeName, type TreeNode } from "../core/collectionRepo";
 import { countRequests, type ImportPlan, type TransferNode } from "../core/transfer/model";
 import { emptyCollection, emptyRequest, emptyWebSocket, type HttpRequestDoc } from "../core/model";
@@ -259,6 +259,10 @@ export async function saveTab(id: string): Promise<boolean> {
     return true;
   });
   return result ?? false;
+}
+
+export async function openInFileManager(path: string) {
+  await guard("Could not open folder", () => shellApi.openDir(path));
 }
 
 export async function saveActiveTab() {

@@ -13,6 +13,7 @@ import {
   newRequest,
   newWebSocket,
   openCollectionSettings,
+  openInFileManager,
   openNode,
   openRunner,
   renameNode,
@@ -41,6 +42,7 @@ function nodeMenu(col: LoadedCollection, node: TreeNode): MenuEntry[] {
       { label: "New Folder", onSelect: () => newFolder(root, node.path) },
       { label: "Folder Settings", onSelect: () => openNode(root, node) },
       { label: "Run Folder", onSelect: () => openRunner(root, node.path, node.doc.name) },
+      { label: "Open in File Manager", onSelect: () => void openInFileManager(node.path) },
       "separator",
     );
   }
@@ -191,6 +193,7 @@ export function CollectionTree({ col }: { col: LoadedCollection }) {
     { label: "Run Collection", onSelect: () => openRunner(col.root, col.root, col.doc.name) },
     { label: "Export…", onSelect: () => openExportDialog(col) },
     "separator",
+    { label: "Open in File Manager", onSelect: () => void openInFileManager(col.root) },
     {
       label: "Copy Path",
       onSelect: () =>

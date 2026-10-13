@@ -136,6 +136,11 @@ export const cookieApi = {
 };
 
 /** Files at paths the user picked in a dialog (outside collections). */
+/** OS integration for paths inside open collections. */
+export const shellApi = {
+  openDir: (path: string) => invoke<void>("fs_open_dir", { path }),
+};
+
 export const fileApi = {
   saveBase64: (path: string, data: string) => invoke<void>("file_save_base64", { path, data }),
   saveText: (path: string, text: string) => invoke<void>("file_save_base64", { path, data: utf8ToBase64(text) }),
