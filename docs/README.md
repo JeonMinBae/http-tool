@@ -24,7 +24,7 @@ macOS와 Windows에서 동작하는 가벼운 HTTP 클라이언트다. Postman·
 | [쿠키](features/cookies.md) | 앱 전역 쿠키 저장소와 관리 화면 |
 | [히스토리](features/history.md) | 보낸 요청 기록 |
 | [네트워크 설정](features/settings.md) | 타임아웃, 리다이렉트, SSL, 프록시 |
-| [검색](features/search.md) | ⌘K 빠른 검색 |
+| [검색](features/search.md) | 사이드바 검색 (요청 트리 필터, 변수 검색), ⌘K |
 | [컬렉션 러너](features/runner.md) | 폴더·컬렉션 일괄 실행 |
 | [SSE와 WebSocket](features/streaming.md) | 이벤트 스트림, WebSocket 요청 |
 

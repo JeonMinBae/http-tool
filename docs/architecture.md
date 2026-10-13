@@ -70,25 +70,26 @@ scripts/make-dmg.sh     Finder 자동화 없이 dmg 생성
 
 ## IPC 명령
 
-`src-tauri/src/lib.rs`에 등록된 29개 명령. 프론트엔드는 `src/ipc.ts`를 통해서만 호출한다.
+`src-tauri/src/lib.rs`에 등록된 31개 명령. 프론트엔드는 `src/ipc.ts`를 통해서만 호출한다.
 
 | 그룹 | 명령 |
 | --- | --- |
-| 컬렉션 파일 | `collection_register`, `collection_unregister`, `fs_read_tree`, `fs_read_file`, `fs_write_file`, `fs_create_dir`, `fs_rename`, `fs_copy`, `fs_delete` |
+| 컬렉션 파일 | `collection_register`, `collection_unregister`, `fs_read_tree`, `fs_read_file`, `fs_write_file`, `fs_create_dir`, `fs_rename`, `fs_copy`, `fs_delete`, `fs_open_dir` |
 | 앱 데이터 | `appdata_read`, `appdata_write` |
 | HTTP | `http_send`, `stream_cancel` |
 | 쿠키 | `cookie_list`, `cookie_upsert`, `cookie_delete`, `cookie_clear` |
 | 히스토리 | `history_append`, `history_list`, `history_get`, `history_clear` |
 | OAuth | `oauth_listen`, `oauth_wait` |
 | WebSocket | `ws_connect`, `ws_send`, `ws_close` |
-| 파일 | `file_save_base64`, `file_pick_text`, `dir_create_unique` |
+| 파일 | `file_save_base64`, `file_pick_text`, `dir_create_unique`, `dir_create_new` |
 
 이 밖에 Tauri 플러그인 `dialog`(폴더·파일 선택)와 `opener`(시스템 브라우저 열기)를 쓴다.
 
 ## 보안 경계
 
 - 컬렉션 파일 명령은 `collection_register`로 등록된 컬렉션 루트 안의 경로만 허용하고, 루트 자체의 삭제·이름 변경은 막는다.
-- 파일 그룹 명령(`file_*`, `dir_create_unique`)은 사용자가 대화상자로 고른 경로에만 쓰인다. 읽기(`file_pick_text`)는 Rust가 직접 대화상자를 띄워 경로를 받으므로 프론트엔드가 읽을 경로를 지정할 수 없고, 32MB를 넘는 파일은 거부한다. `dir_create_unique`는 경로 구분자나 `..`가 든 이름을 거부하고 기존 폴더를 덮어쓰지 않는다.
+- 파일 그룹 명령(`file_*`, `dir_create_unique`)은 사용자가 대화상자로 고른 경로에만 쓰인다. 읽기(`file_pick_text`)는 Rust가 직접 대화상자를 띄워 경로를 받으므로 프론트엔드가 읽을 경로를 지정할 수 없고, 32MB를 넘는 파일은 거부한다. `dir_create_unique`는 경로 구분자나 `..`가 든 이름을 거부하고 기존 폴더를 덮어쓰지 않는다. `dir_create_new`는 새 컬렉션용으로 `<상위>/<이름>`을 만들며, 같은 검사로 경로 형태의 이름을 거부하고 이미 있으면 실패한다.
+- `fs_open_dir`는 열린 컬렉션 루트 안(루트 포함)의 폴더만 OS 파일 관리자로 연다. 프론트엔드에는 임의 경로를 여는 `opener`의 `open-path` 권한을 주지 않고, 이 명령만 Rust에서 연다.
 - 앱 데이터는 정해진 이름(`globals`, `environments`, `settings`, `workspace`, `oauth-tokens`, `secrets/<sha256>`)만 읽고 쓸 수 있다.
 - 사용자 스크립트는 Worker 안에서 실행되며 `fetch`, `XMLHttpRequest`, `WebSocket`, Tauri 객체 등에 접근할 수 없다. 자세한 내용은 [스크립트](features/scripts.md).
 - HTML 응답 미리보기는 `sandbox=""` iframe에서 스크립트 없이 렌더링한다.
