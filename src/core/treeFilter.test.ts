@@ -30,8 +30,15 @@ describe("filterTree", () => {
     expect(r.open.has("/c/users")).toBe(true);
   });
 
-  it("keeps a whole collection whose name matches", () => {
-    expect(filterTree([tree], "api").collections[0]).toBe(tree);
+  it("opens every folder below a matching folder so its whole subtree is visible", () => {
+    const nested = col("API", [folder("Users", "/c/users", [folder("Admin", "/c/users/admin", [req("Ban", "/ban", "/c/users/admin/ban.yaml")])])]);
+    expect([...filterTree([nested], "users").open].sort()).toEqual(["/c", "/c/users", "/c/users/admin"]);
+  });
+
+  it("keeps a whole collection whose name matches and opens all its folders", () => {
+    const r = filterTree([tree], "api");
+    expect(r.collections[0]).toBe(tree);
+    expect([...r.open].sort()).toEqual(["/c", "/c/orders", "/c/users"]);
   });
 
   it("drops collections without matches", () => {

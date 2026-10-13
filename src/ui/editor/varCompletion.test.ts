@@ -23,6 +23,11 @@ describe("varCompletionSource", () => {
     expect(run("{{ho}}", 4)?.options[0].apply).toBe("host");
   });
 
+  it("replaces the rest of the name when picking in the middle of it", () => {
+    const r = run("{{old}}", 3); // cursor after "{{o"
+    expect([r?.from, r?.to, r?.options[0].apply]).toEqual([2, 5, "host"]);
+  });
+
   it("stays quiet without {{ unless invoked explicitly", () => {
     expect(run("Bearer ab")).toBeNull();
     const r = run("Bearer ab", 9, true);

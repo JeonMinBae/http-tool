@@ -4,6 +4,7 @@ import { sanitizeName, type TreeNode } from "../core/collectionRepo";
 import { countRequests, type ImportPlan, type TransferNode } from "../core/transfer/model";
 import { emptyCollection, emptyRequest, emptyWebSocket, type HttpRequestDoc } from "../core/model";
 import { samePath } from "../core/path";
+import { createSerial } from "../core/serial";
 import { useStreams } from "../state/streams";
 import { useExpanded } from "../state/treeExpand";
 import { useWebSockets } from "../state/websockets";
@@ -16,6 +17,10 @@ import { pickSaveLocation } from "./tabs/SaveAsDialog";
 
 const ws = () => useWorkspace.getState();
 const tabs = () => useTabs.getState();
+
+// Rename reads the file and rewrites it; a save landing in between would be overwritten
+// with the old content (e.g. Enter in the name field followed by ⌘S). Run them one at a time.
+const fileOps = createSerial();
 
 async function guard<T>(title: string, fn: () => Promise<T>): Promise<T | undefined> {
   try {
@@ -167,15 +172,17 @@ export async function renameNode(root: string, node: TreeNode) {
 }
 
 /** Renames a saved node on disk. Open tabs follow the new path; unsaved edits in them are kept. */
-export async function renameAt(root: string, node: Pick<TreeNode, "type" | "path">, name: string): Promise<boolean> {
-  const done = await guard("Could not rename", async () => {
-    const next = await collectionRepo.rename(node, name);
-    tabs().renamePath(node.path, next);
-    await ws().reload(root);
-    syncTabsWithTree(root);
-    return true;
+export function renameAt(root: string, node: Pick<TreeNode, "type" | "path">, name: string): Promise<boolean> {
+  return fileOps(async () => {
+    const done = await guard("Could not rename", async () => {
+      const next = await collectionRepo.rename(node, name);
+      tabs().renamePath(node.path, next);
+      await ws().reload(root);
+      syncTabsWithTree(root);
+      return true;
+    });
+    return done ?? false;
   });
-  return done ?? false;
 }
 
 export async function duplicateNode(root: string, node: TreeNode) {
@@ -226,7 +233,12 @@ export function newUntitledRequest(doc?: HttpRequestDoc) {
   tabs().open(null, null, doc ?? emptyRequest("Untitled Request"));
 }
 
-export async function saveTab(id: string): Promise<boolean> {
+/** Saves a tab after any pending rename, reading the tab only then so its path and name are current. */
+export function saveTab(id: string): Promise<boolean> {
+  return fileOps(() => saveTabNow(id));
+}
+
+async function saveTabNow(id: string): Promise<boolean> {
   const tab = tabs().tabs.find((t) => t.id === id);
   if (!tab) return false;
   const result = await guard("Could not save", async () => {

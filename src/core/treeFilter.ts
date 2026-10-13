@@ -11,11 +11,20 @@ export function filterTree(collections: LoadedCollection[], query: string): Filt
   const q = query.trim().toLowerCase();
   const has = (s: string) => s.toLowerCase().includes(q);
   const open = new Set<string>();
+  // A matching folder shows its whole subtree, so every folder below it opens too.
+  const openAll = (nodes: TreeNode[]) => {
+    for (const n of nodes) {
+      if (n.type !== "folder") continue;
+      open.add(n.path);
+      openAll(n.children);
+    }
+  };
   const prune = (nodes: TreeNode[]): TreeNode[] =>
     nodes.flatMap((n): TreeNode[] => {
       if (n.type !== "folder") return has(n.doc.name) || has(n.doc.url) ? [n] : [];
       if (has(n.doc.name)) {
         open.add(n.path);
+        openAll(n.children);
         return [n];
       }
       const children = prune(n.children);
@@ -26,6 +35,7 @@ export function filterTree(collections: LoadedCollection[], query: string): Filt
   const kept = collections.flatMap((c): LoadedCollection[] => {
     if (has(c.doc.name)) {
       open.add(c.root);
+      openAll(c.children);
       return [c];
     }
     const children = prune(c.children);
