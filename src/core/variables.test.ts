@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildScopes, interpolate, resolveVar, varSource, type VarScopes } from "./variables";
+import { buildScopes, interpolate, listVars, resolveVar, varSource, type VarScopes } from "./variables";
 
 const s = (p: Partial<VarScopes>): VarScopes => ({ local: {}, environment: {}, collection: {}, global: {}, ...p });
 const v = (key: string, value: string, enabled = true) => ({ key, value, enabled, secret: false });
@@ -44,5 +44,16 @@ describe("buildScopes", () => {
     const scopes = buildScopes({ globals: [v("a", "g")], environment: [v("a", "e")] });
     expect(varSource("a", scopes)).toBe("environment");
     expect(varSource("zz", scopes)).toBeUndefined();
+  });
+});
+
+describe("listVars", () => {
+  it("lists each name once from its highest-precedence scope, sorted by name", () => {
+    const scopes = buildScopes({ globals: [v("host", "g")], environment: [v("host", "e"), v("token", "t")], collection: [v("a", "c")] });
+    expect(listVars(scopes)).toEqual([
+      { name: "a", scope: "collection", value: "c" },
+      { name: "host", scope: "environment", value: "e" },
+      { name: "token", scope: "environment", value: "t" },
+    ]);
   });
 });

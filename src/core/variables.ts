@@ -60,3 +60,18 @@ export function interpolate(text: string, s: VarScopes, depth = 0): { value: str
 export function referencedVars(text: string): string[] {
   return [...new Set([...text.matchAll(PATTERN)].map((m) => m[1]))];
 }
+
+export interface VisibleVar {
+  name: string;
+  scope: VarScope;
+  value: string;
+}
+
+/** Every variable visible in `s`, taken from its highest-precedence scope, sorted by name. */
+export function listVars(s: VarScopes): VisibleVar[] {
+  const out = new Map<string, VisibleVar>();
+  for (const scope of SCOPE_ORDER) {
+    for (const [name, value] of Object.entries(s[scope])) if (!out.has(name)) out.set(name, { name, scope, value });
+  }
+  return [...out.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
