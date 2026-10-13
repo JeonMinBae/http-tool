@@ -113,10 +113,16 @@ export interface FolderDoc {
 
 export interface Variable {
   key: string;
+  /** Unused ("") for list variables. */
   value: string;
   enabled: boolean;
   secret: boolean;
+  /** List variables hold key/value items referenced as `{{key:itemKey}}`. */
+  type?: "list";
+  items?: KeyValue[];
 }
+
+export const isListVar = (v: Variable): v is Variable & { type: "list"; items: KeyValue[] } => v.type === "list";
 
 export interface CollectionDoc {
   kind: "collection";
