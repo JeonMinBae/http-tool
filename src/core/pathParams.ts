@@ -21,15 +21,13 @@ export const pathParamNames = (url: string): string[] => [...new Set(pathParamSp
 
 /** URL names in order (values kept by name), then rows no longer in the URL so a retyped name gets its value back. */
 export function syncPathParams(url: string, prev: PathParam[]): PathParam[] {
-  const names = pathParamNames(url);
-  const current = names.map((key) => prev.find((p) => p.key === key) ?? { key, value: "", description: "" });
-  return [...current, ...prev.filter((p) => !names.includes(p.key))];
+  const current = visiblePathParams(url, prev);
+  return [...current, ...prev.filter((p) => !current.some((c) => c.key === p.key))];
 }
 
-export const visiblePathParams = (url: string, rows: PathParam[]): PathParam[] => {
-  const names = pathParamNames(url);
-  return names.map((key) => rows.find((p) => p.key === key) ?? { key, value: "", description: "" });
-};
+export function visiblePathParams(url: string, rows: PathParam[]): PathParam[] {
+  return pathParamNames(url).map((key) => rows.find((p) => p.key === key) ?? { key, value: "", description: "" });
+}
 
 /** Bulk `key: value` lines update values of existing rows only; unknown names and `//` lines are ignored, missing lines keep their value. */
 export function applyBulkValues(rows: PathParam[], text: string): PathParam[] {
