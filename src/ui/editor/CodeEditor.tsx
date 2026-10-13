@@ -96,7 +96,8 @@ export function CodeEditor({ value, onChange, language = "text", readOnly, singl
 
   return (
     <CodeMirror
-      className={className}
+      // @uiw/react-codemirror wraps .cm-editor in a div; without a height there, height:100% collapses to content height and nothing scrolls.
+      className={singleLine ? className : `h-full ${className}`}
       value={value}
       onChange={onChange}
       theme={dark ? "dark" : "light"}
