@@ -78,6 +78,12 @@ function SettingsBody({ close }: { close: () => void }) {
   );
 }
 
+let open = false;
+
 export function openSettings() {
-  return openDialog((close) => <SettingsBody close={close} />);
+  if (open) return;
+  open = true;
+  void openDialog((close) => <SettingsBody close={close} />).then(() => {
+    open = false;
+  });
 }
