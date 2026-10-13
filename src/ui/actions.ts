@@ -2,7 +2,7 @@ import { open as openDialogPicker, save as saveDialogPicker } from "@tauri-apps/
 import { fileApi } from "../ipc";
 import { sanitizeName, type TreeNode } from "../core/collectionRepo";
 import { countRequests, type ImportPlan, type TransferNode } from "../core/transfer/model";
-import { emptyRequest, emptyWebSocket, type HttpRequestDoc } from "../core/model";
+import { emptyCollection, emptyRequest, emptyWebSocket, type HttpRequestDoc } from "../core/model";
 import { samePath } from "../core/path";
 import { useStreams } from "../state/streams";
 import { useExpanded } from "../state/treeExpand";
@@ -30,6 +30,21 @@ const importedMessage = (items: TransferNode[]) => {
   const n = countRequests(items);
   return `Imported ${n} ${n === 1 ? "request" : "requests"}`;
 };
+
+/** Asks for a name and a parent folder, then creates `<parent>/<name>/collection.yaml` and opens it. */
+export async function newCollection() {
+  const name = (await askText("New collection", "Name", "New Collection"))?.trim();
+  if (!name) return;
+  const parent = await openDialogPicker({ directory: true, multiple: false, title: "Choose where to create the collection" });
+  if (typeof parent !== "string") return;
+  await guard("Could not create collection", async () => {
+    const dir = await fileApi.createNewDir(parent, sanitizeName(name, "collection"));
+    const col = await ws().openCollection(dir);
+    await ws().saveCollectionDoc(col.root, emptyCollection(name));
+    useExpanded.getState().expand(col.root);
+    await ws().reload(col.root);
+  });
+}
 
 export async function openCollectionFromDialog() {
   const picked = await openDialogPicker({ directory: true, multiple: false, title: "Open collection folder" });

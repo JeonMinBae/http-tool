@@ -143,6 +143,8 @@ export const fileApi = {
   pickText: (title: string, extensions: string[]) => invoke<{ name: string; content: string } | null>("file_pick_text", { title, extensions }),
   /** Creates a new folder (suffixed when taken) for an imported collection; returns its path. */
   createUniqueDir: (parent: string, name: string) => invoke<string>("dir_create_unique", { parent, name }),
+  /** Creates `<parent>/<name>` for a new collection; rejects when it already exists. Returns its path. */
+  createNewDir: (parent: string, name: string) => invoke<string>("dir_create_new", { parent, name }),
 };
 
 export interface HistorySummary {

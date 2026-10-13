@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { filterTree } from "../../core/treeFilter";
 import { useSidebar } from "../../state/sidebar";
 import { useWorkspace } from "../../state/workspace";
-import { newUntitledRequest, openCollectionFromDialog } from "../actions";
+import { newCollection, newUntitledRequest, openCollectionFromDialog } from "../actions";
 import { IconButton } from "../common/Button";
 import { Icon } from "../common/icons";
 import { CollectionTree } from "./CollectionTree";
@@ -70,6 +70,9 @@ export function Sidebar() {
             <IconButton title="Import cURL" onClick={() => openCurlImport()}>
               <Icon name="import" />
             </IconButton>
+            <IconButton title="New collection" onClick={() => newCollection()}>
+              <Icon name="folderPlus" />
+            </IconButton>
             <IconButton title="Open collection folder" onClick={() => openCollectionFromDialog()}>
               <Icon name="folder" />
             </IconButton>
@@ -96,6 +99,11 @@ export function Sidebar() {
                 <button type="button" className="text-accent hover:underline" onClick={() => openCollectionFromDialog()}>
                   Open a folder as a collection
                 </button>
+                <div>
+                  <button type="button" className="text-accent hover:underline" onClick={() => newCollection()}>
+                    Create a new collection
+                  </button>
+                </div>
               </div>
             )}
           </>

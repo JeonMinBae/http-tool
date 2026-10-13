@@ -49,6 +49,7 @@ pub fn run() {
             files::file_save_base64,
             files::file_pick_text,
             files::dir_create_unique,
+            files::dir_create_new,
             fs_commands::collection_register,
             fs_commands::collection_unregister,
             fs_commands::fs_read_tree,

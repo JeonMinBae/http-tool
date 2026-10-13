@@ -50,10 +50,32 @@ pub fn dir_create_unique(parent: String, name: String) -> AppResult<String> {
     create_unique_dir(std::path::Path::new(&parent), &name).map(|p| p.to_string_lossy().to_string())
 }
 
-fn create_unique_dir(parent: &std::path::Path, name: &str) -> AppResult<std::path::PathBuf> {
+/// Creates `<parent>/<name>` for a new, empty collection; fails when it already exists. Returns the new path.
+#[tauri::command]
+pub fn dir_create_new(parent: String, name: String) -> AppResult<String> {
+    create_new_dir(std::path::Path::new(&parent), &name).map(|p| p.to_string_lossy().to_string())
+}
+
+fn check_dir_name(name: &str) -> AppResult<()> {
     if name.is_empty() || name == "." || name == ".." || name.contains(['/', '\\']) {
         return Err(AppError::Invalid(format!("invalid folder name: {name}")));
     }
+    Ok(())
+}
+
+fn create_new_dir(parent: &std::path::Path, name: &str) -> AppResult<std::path::PathBuf> {
+    check_dir_name(name)?;
+    let path = dunce::canonicalize(parent)?.join(name);
+    // create_dir (not create_dir_all) fails atomically when the folder exists.
+    std::fs::create_dir(&path).map_err(|e| match e.kind() {
+        std::io::ErrorKind::AlreadyExists => AppError::Invalid(format!("folder already exists: {}", path.display())),
+        _ => e.into(),
+    })?;
+    Ok(path)
+}
+
+fn create_unique_dir(parent: &std::path::Path, name: &str) -> AppResult<std::path::PathBuf> {
+    check_dir_name(name)?;
     let parent = dunce::canonicalize(parent)?;
     let mut candidate = parent.join(name);
     let mut n = 2;
@@ -94,6 +116,15 @@ mod tests {
         std::fs::write(&p, "{\"a\":1}").unwrap();
         assert_eq!(read_text_capped(&p, 100).unwrap(), "{\"a\":1}");
         assert!(read_text_capped(&p, 3).is_err());
+    }
+
+    #[test]
+    fn create_new_dir_creates_once_and_rejects_existing_or_path_like_names() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = create_new_dir(dir.path(), "Pets").unwrap();
+        assert!(p.is_dir());
+        assert!(create_new_dir(dir.path(), "Pets").unwrap_err().to_string().contains("already exists"));
+        assert!(create_new_dir(dir.path(), "../x").is_err());
     }
 
     #[test]
