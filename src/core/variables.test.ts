@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildScopes, interpolate, resolveVar, setScopeVar, varSource, visibleVars, type VarScopes } from "./variables";
+import { buildScopes, interpolate, resolveVar, setScopeVar, toggleVarType, varSource, visibleVars, type VarScopes } from "./variables";
 
 const s = (p: Partial<VarScopes>): VarScopes => ({ local: {}, environment: {}, collection: {}, global: {}, ...p });
 const v = (key: string, value: string, enabled = true) => ({ key, value, enabled, secret: false });
@@ -81,4 +81,10 @@ describe("list variables", () => {
     setScopeVar(rec, "t:A", "1");
     expect(varSource("t:A", s({ local: rec }))).toBe("local");
   });
+});
+
+it("toggleVarType switches between text and list", () => {
+  const list = toggleVarType({ key: "t", value: "x", enabled: true, secret: true });
+  expect(list).toEqual({ key: "t", value: "", enabled: true, secret: true, type: "list", items: [] });
+  expect(toggleVarType(list)).toEqual({ key: "t", value: "", enabled: true, secret: true });
 });

@@ -22,6 +22,10 @@ export const listMarker = (list: string) => `${list}:`;
 export const isListMarker = (name: string) => name.endsWith(":") && name.indexOf(":") === name.length - 1;
 export const isValidVarName = (name: string) => !name.includes(":");
 
+/** Switches a variable between text and list; the other form's data is dropped. */
+export const toggleVarType = (v: Variable): Variable =>
+  isListVar(v) ? { key: v.key, value: "", enabled: v.enabled, secret: v.secret } : { ...v, value: "", type: "list", items: [] };
+
 /** `tool:A:B` → list `tool`, key `A:B` (split at the first ':'). */
 export function splitListRef(name: string): { list: string; key: string } | null {
   const i = name.indexOf(":");
