@@ -41,3 +41,16 @@ export function applyBulkValues(rows: PathParam[], text: string): PathParam[] {
   }
   return rows.map((r) => (values.has(r.key) ? { ...r, value: values.get(r.key)! } : r));
 }
+
+/** Replaces `{name}` in the path with the resolved, URI-encoded value; empty values stay as `{name}`. */
+export function applyPathParams(url: string, rows: PathParam[], t: (v: string) => string): { url: string; empty: string[] } {
+  const empty = new Set<string>();
+  let out = "";
+  let at = 0;
+  for (const s of pathParamSpans(url)) {
+    const value = rows.find((r) => r.key === s.name)?.value ?? "";
+    out += url.slice(at, s.from) + (value === "" ? (empty.add(s.name), url.slice(s.from, s.to)) : encodeURIComponent(t(value)));
+    at = s.to;
+  }
+  return { url: out + url.slice(at), empty: [...empty] };
+}

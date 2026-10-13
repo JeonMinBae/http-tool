@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { LoadedCollection } from "./collectionRepo";
 import { DEFAULT_SETTINGS, emptyCollection, emptyFolder, emptyRequest, type HttpRequestDoc } from "./model";
-import { buildChain, prepareRequest, PrepareError } from "./prepare";
+import { buildChain, prepareRequest, PrepareError, unresolvedLabel } from "./prepare";
 import { buildScopes } from "./variables";
 
 const scopes = buildScopes({ globals: [{ key: "host", value: "api.test", enabled: true, secret: false }, { key: "id", value: "7", enabled: true, secret: false }] });
@@ -78,5 +78,22 @@ describe("prepareRequest", () => {
 
   it("rejects an empty url", () => {
     expect(() => prepareRequest(chainFor(req({ url: "  " })), scopes, DEFAULT_SETTINGS)).toThrow(/URL/);
+  });
+
+  it("substitutes path params after resolving variables and encodes them", () => {
+    const r = prepareRequest(chainFor(req({
+      url: "{{host}}/u/{id}/f/{name}/{id}?q={x}",
+      pathParams: [{ key: "id", value: "{{id}}", description: "" }, { key: "name", value: "a/b c", description: "" }],
+    })), scopes, DEFAULT_SETTINGS);
+    expect(r.request.url).toBe("http://api.test/u/7/f/a%2Fb%20c/7?q={x}");
+    expect(r.unresolved).toEqual([]);
+  });
+
+  it("keeps empty path params as {name} and reports them", () => {
+    const r = prepareRequest(chainFor(req({ url: "http://a/{p}", pathParams: [{ key: "p", value: "", description: "" }] })), scopes, DEFAULT_SETTINGS);
+    expect(r.request.url).toBe("http://a/{p}");
+    expect(r.unresolved).toEqual(["{p}"]);
+    expect(unresolvedLabel("{p}")).toBe("{p}");
+    expect(unresolvedLabel("v")).toBe("{{v}}");
   });
 });
