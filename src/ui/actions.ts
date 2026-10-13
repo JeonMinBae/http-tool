@@ -148,12 +148,19 @@ export async function newFolder(root: string, parent: string) {
 export async function renameNode(root: string, node: TreeNode) {
   const name = await askText(`Rename ${node.type}`, "Name", node.doc.name);
   if (!name || name === node.doc.name) return;
-  await guard("Could not rename", async () => {
+  await renameAt(root, node, name);
+}
+
+/** Renames a saved node on disk. Open tabs follow the new path; unsaved edits in them are kept. */
+export async function renameAt(root: string, node: Pick<TreeNode, "type" | "path">, name: string): Promise<boolean> {
+  const done = await guard("Could not rename", async () => {
     const next = await collectionRepo.rename(node, name);
     tabs().renamePath(node.path, next);
     await ws().reload(root);
     syncTabsWithTree(root);
+    return true;
   });
+  return done ?? false;
 }
 
 export async function duplicateNode(root: string, node: TreeNode) {

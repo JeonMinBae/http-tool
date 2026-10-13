@@ -7,6 +7,7 @@ import { AuthEditor } from "./AuthEditor";
 import { BodyEditor } from "./BodyEditor";
 import { ScriptsEditor } from "./ScriptsEditor";
 import { SettingsTab } from "./SettingsTab";
+import { NameField } from "./NameField";
 import { UrlBar } from "./UrlBar";
 import { useVarExtension } from "../editor/useScopes";
 
@@ -42,6 +43,7 @@ export function RequestEditor({ tab }: { tab: Tab<HttpRequestDoc> }) {
 
   return (
     <div className="flex h-full flex-col">
+      <NameField tab={tab} />
       <UrlBar tab={tab} />
       <SectionTabs<Section>
         active={section}

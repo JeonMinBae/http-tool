@@ -13,6 +13,7 @@ import { KeyValueTable } from "../common/KeyValueTable";
 import { PulseDot, Spinner } from "../common/Spinner";
 import { CodeEditor } from "../editor/CodeEditor";
 import { useScopes, useVarExtension } from "../editor/useScopes";
+import { NameField } from "../request/NameField";
 import { SectionTabs } from "../request/RequestEditor";
 import { Split } from "../common/Split";
 
@@ -131,6 +132,7 @@ export function WsEditor({ tab }: { tab: Tab<WebSocketDoc> }) {
           minSize: 150,
           children: (
             <div className="flex h-full flex-col">
+              <NameField tab={tab} />
               <div className="flex items-center gap-2 px-3 py-2">
                 <div className="min-w-0 flex-1 rounded border border-line bg-elevated">
                   <CodeEditor singleLine extensions={varExt} value={d.url} placeholder="wss://example.com/socket" onEnter={connect} onChange={(url) => patch({ url })} />
