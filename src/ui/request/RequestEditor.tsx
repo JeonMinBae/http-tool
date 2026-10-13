@@ -9,6 +9,7 @@ import { ScriptsEditor } from "./ScriptsEditor";
 import { SettingsTab } from "./SettingsTab";
 import { UrlBar } from "./UrlBar";
 import { useVarExtension } from "../editor/useScopes";
+import { VarRootContext } from "../editor/VarInput";
 
 type Section = "params" | "headers" | "body" | "auth" | "cookies" | "scripts" | "settings";
 
@@ -41,43 +42,45 @@ export function RequestEditor({ tab }: { tab: Tab<HttpRequestDoc> }) {
   const patch = (p: Partial<HttpRequestDoc>) => update<HttpRequestDoc>(tab.id, (x) => ({ ...x, ...p }));
 
   return (
-    <div className="flex h-full flex-col">
-      <UrlBar tab={tab} />
-      <SectionTabs<Section>
-        active={section}
-        onSelect={setSection}
-        sections={[
-          { id: "params", label: "Params", badge: count(d.params) },
-          { id: "headers", label: "Headers", badge: count(d.headers) },
-          { id: "body", label: "Body", badge: d.body.type === "none" ? undefined : "●" },
-          { id: "auth", label: "Auth", badge: d.auth.type === "inherit" || d.auth.type === "none" ? undefined : "●" },
-          { id: "cookies", label: "Cookies", badge: count(d.cookies) },
-          { id: "scripts", label: "Scripts", badge: d.scripts.pre.trim() || d.scripts.post.trim() ? "●" : undefined },
-          { id: "settings", label: "Settings", badge: Object.keys(d.settings).length ? "●" : undefined },
-        ]}
-      />
-      <div className="min-h-0 flex-1 overflow-auto p-3">
-        {section === "params" && (
-          <KeyValueTable
-            rows={d.params}
-            makeRow={kv}
-            onChange={(params) => update<HttpRequestDoc>(tab.id, (x) => ({ ...x, params, url: syncUrlFromParams(x.url, params) }))}
-          />
-        )}
-        {section === "headers" && <KeyValueTable rows={d.headers} makeRow={kv} onChange={(headers) => patch({ headers })} />}
-        {section === "body" && <BodyEditor body={d.body} extensions={varExt} onChange={(body) => patch({ body })} />}
-        {section === "auth" && <AuthEditor auth={d.auth} root={tab.root} onChange={(auth) => patch({ auth })} />}
-        {section === "cookies" && (
-          <>
-            <p className="mb-2 text-[12px] text-muted">
-              Sent as a Cookie header. When set, cookies from the cookie jar are not added to this request.
-            </p>
-            <KeyValueTable rows={d.cookies} makeRow={kv} onChange={(cookies) => patch({ cookies })} />
-          </>
-        )}
-        {section === "scripts" && <ScriptsEditor scripts={d.scripts} onChange={(scripts) => patch({ scripts })} />}
-        {section === "settings" && <SettingsTab settings={d.settings} onChange={(settings) => patch({ settings })} />}
+    <VarRootContext.Provider value={tab.root}>
+      <div className="flex h-full flex-col">
+        <UrlBar tab={tab} />
+        <SectionTabs<Section>
+          active={section}
+          onSelect={setSection}
+          sections={[
+            { id: "params", label: "Params", badge: count(d.params) },
+            { id: "headers", label: "Headers", badge: count(d.headers) },
+            { id: "body", label: "Body", badge: d.body.type === "none" ? undefined : "●" },
+            { id: "auth", label: "Auth", badge: d.auth.type === "inherit" || d.auth.type === "none" ? undefined : "●" },
+            { id: "cookies", label: "Cookies", badge: count(d.cookies) },
+            { id: "scripts", label: "Scripts", badge: d.scripts.pre.trim() || d.scripts.post.trim() ? "●" : undefined },
+            { id: "settings", label: "Settings", badge: Object.keys(d.settings).length ? "●" : undefined },
+          ]}
+        />
+        <div className="min-h-0 flex-1 overflow-auto p-3">
+          {section === "params" && (
+            <KeyValueTable
+              rows={d.params}
+              makeRow={kv}
+              onChange={(params) => update<HttpRequestDoc>(tab.id, (x) => ({ ...x, params, url: syncUrlFromParams(x.url, params) }))}
+            />
+          )}
+          {section === "headers" && <KeyValueTable rows={d.headers} makeRow={kv} onChange={(headers) => patch({ headers })} />}
+          {section === "body" && <BodyEditor body={d.body} extensions={varExt} onChange={(body) => patch({ body })} />}
+          {section === "auth" && <AuthEditor auth={d.auth} root={tab.root} onChange={(auth) => patch({ auth })} />}
+          {section === "cookies" && (
+            <>
+              <p className="mb-2 text-[12px] text-muted">
+                Sent as a Cookie header. When set, cookies from the cookie jar are not added to this request.
+              </p>
+              <KeyValueTable rows={d.cookies} makeRow={kv} onChange={(cookies) => patch({ cookies })} />
+            </>
+          )}
+          {section === "scripts" && <ScriptsEditor scripts={d.scripts} onChange={(scripts) => patch({ scripts })} />}
+          {section === "settings" && <SettingsTab settings={d.settings} onChange={(settings) => patch({ settings })} />}
+        </div>
       </div>
-    </div>
+    </VarRootContext.Provider>
   );
 }

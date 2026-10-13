@@ -4,6 +4,7 @@ import { samePath } from "../../core/path";
 import { useVariables } from "../../state/variables";
 import { useWorkspace } from "../../state/workspace";
 import { useVarHighlight } from "./varHighlight";
+import { varCompletion } from "./varCompletion";
 
 /** Current variable scopes for a collection root (reactive). */
 export function useScopes(root: string | null) {
@@ -19,5 +20,8 @@ export function useScopes(root: string | null) {
 
 export function useVarExtension(root: string | null) {
   const { scopes, secrets } = useScopes(root);
-  return useVarHighlight(scopes, secrets);
+  const highlight = useVarHighlight(scopes, secrets);
+  const key = JSON.stringify(scopes) + [...secrets].join(",");
+  // Keyed on content so editors aren't reconfigured on every render.
+  return useMemo(() => [...highlight, ...varCompletion(scopes, secrets)], [highlight, key]);
 }

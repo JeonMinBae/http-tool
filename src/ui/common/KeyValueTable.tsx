@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import type { KeyValue } from "../../core/model";
 import { Icon } from "./icons";
+import { VarInput } from "../editor/VarInput";
 
 export interface KeyValueTableProps<T extends KeyValue> {
   rows: T[];
@@ -19,6 +20,8 @@ export interface KeyValueTableProps<T extends KeyValue> {
 }
 
 const cell = "h-7 w-full bg-transparent px-2 outline-none placeholder:text-muted/60 focus:bg-elevated";
+
+const varCell = "min-h-7 w-full bg-transparent focus-within:bg-elevated";
 
 /** Bulk format: one `key: value` per line, disabled rows prefixed with `//`. */
 export function toBulk(rows: KeyValue[]): string {
@@ -132,12 +135,12 @@ export function KeyValueTable<T extends KeyValue>({
                   {renderValue && !placeholder ? (
                     renderValue(row, patch)
                   ) : (
-                    <input
-                      className={`${cell} mono`}
+                    <VarInput
+                      className={`${varCell} mono`}
                       value={row.value}
                       readOnly={readOnly}
                       placeholder={placeholder ? valuePlaceholder : ""}
-                      onChange={(e) => patch({ value: e.target.value } as Partial<T>)}
+                      onChange={(v) => patch({ value: v } as Partial<T>)}
                     />
                   )}
                 </td>

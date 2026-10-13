@@ -5,13 +5,18 @@ import { oauthDeps, resolveOAuth, tokenCache, useOAuthTokens } from "../../state
 import { toast } from "../../state/toasts";
 import { Button } from "../common/Button";
 import { Spinner } from "../common/Spinner";
+import { VarInput } from "../editor/VarInput";
 import { useScopes } from "../editor/useScopes";
 
 function Field({ label, value, onChange, placeholder, type = "text" }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
   return (
     <label className="grid grid-cols-[140px_1fr] items-center gap-3">
       <span className="text-muted">{label}</span>
-      <input type={type} className="mono rounded border border-line bg-elevated px-2 py-1.5 outline-none" placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
+      {type === "password" ? (
+        <input type="password" className="mono rounded border border-line bg-elevated px-2 py-1.5 outline-none" placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
+      ) : (
+        <VarInput className="mono rounded border border-line bg-elevated" placeholder={placeholder} value={value} onChange={onChange} />
+      )}
     </label>
   );
 }

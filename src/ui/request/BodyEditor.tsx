@@ -1,6 +1,7 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import type { Body, BodyType, FormField, KeyValue, RawLanguage } from "../../core/model";
 import { Button } from "../common/Button";
+import { VarInput } from "../editor/VarInput";
 import { KeyValueTable } from "../common/KeyValueTable";
 import type { Extension } from "@codemirror/state";
 import { CodeEditor } from "../editor/CodeEditor";
@@ -121,7 +122,7 @@ export function BodyEditor({ body, onChange, extensions }: { body: Body; onChang
                 </button>
               </div>
             ) : (
-              <input className="mono h-7 w-full bg-transparent px-2 outline-none focus:bg-elevated" value={row.value} onChange={(e) => update({ value: e.target.value })} />
+              <VarInput className="mono min-h-7 w-full bg-transparent focus-within:bg-elevated" value={row.value} onChange={(value) => update({ value })} />
             )
           }
         />

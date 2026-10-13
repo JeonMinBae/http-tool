@@ -15,6 +15,7 @@ import { CodeEditor } from "../editor/CodeEditor";
 import { useScopes, useVarExtension } from "../editor/useScopes";
 import { SectionTabs } from "../request/RequestEditor";
 import { Split } from "../common/Split";
+import { VarRootContext } from "../editor/VarInput";
 
 type Section = "message" | "headers" | "settings";
 
@@ -121,118 +122,120 @@ export function WsEditor({ tab }: { tab: Tab<WebSocketDoc> }) {
   };
 
   return (
-    <Split
-      id="ws"
-      orientation="vertical"
-      panes={[
-        {
-          id: "ws-editor",
-          defaultSize: "45",
-          minSize: 150,
-          children: (
-            <div className="flex h-full flex-col">
-              <div className="flex items-center gap-2 px-3 py-2">
-                <div className="min-w-0 flex-1 rounded border border-line bg-elevated">
-                  <CodeEditor singleLine extensions={varExt} value={d.url} placeholder="wss://example.com/socket" onEnter={connect} onChange={(url) => patch({ url })} />
-                </div>
-                {status === "closed" ? (
-                  <Button variant="primary" className="w-28" disabled={!d.url.trim()} onClick={connect}>
-                    Connect
-                  </Button>
-                ) : (
-                  <Button className="w-28" onClick={() => useWebSockets.getState().disconnect(tab.id)}>
-                    {status === "connecting" ? (
-                      <>
-                        <Spinner /> Connecting…
-                      </>
-                    ) : (
-                      <>
-                        <PulseDot /> Disconnect
-                      </>
-                    )}
-                  </Button>
-                )}
-                <Button onClick={() => void saveTab(tab.id)}>Save</Button>
-              </div>
-              <SectionTabs<Section>
-                active={section}
-                onSelect={setSection}
-                sections={[
-                  { id: "message", label: "Message" },
-                  { id: "headers", label: "Headers", badge: d.headers.filter((h) => h.enabled && h.key).length },
-                  { id: "settings", label: "Settings" },
-                ]}
-              />
-              <div className="min-h-0 flex-1 overflow-auto p-3">
-                {section === "message" && (
-                  <div className="flex h-full min-h-0 gap-3">
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <div className="min-h-0 flex-1 rounded border border-line">
-                        <CodeEditor extensions={varExt} language={binary ? "text" : "json"} value={message} onChange={setMessage} />
-                      </div>
-                      <div className="mt-2 flex items-center gap-3">
-                        <label className="flex items-center gap-1">
-                          <input type="radio" checked={!binary} onChange={() => setBinary(false)} /> Text
-                        </label>
-                        <label className="flex items-center gap-1">
-                          <input type="radio" checked={binary} onChange={() => setBinary(true)} /> Binary (base64)
-                        </label>
-                        {binary && (
-                          <button type="button" className="text-[12px] text-accent hover:underline" onClick={() => setMessage(utf8ToBase64(message))}>
-                            Encode text as base64
-                          </button>
-                        )}
-                        {error && <span className="text-[12px] text-danger">{error}</span>}
-                        <div className="flex-1" />
-                        <Button onClick={saveMessage} disabled={!message}>
-                          Save Message
-                        </Button>
-                        <Button variant="primary" disabled={status !== "open" || !message} onClick={send}>
-                          Send
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="flex w-48 shrink-0 flex-col">
-                      <div className="mb-1 text-[11px] uppercase text-muted">Saved messages</div>
-                      <div className="min-h-0 flex-1 overflow-auto">
-                        {d.savedMessages.length === 0 && <p className="text-[12px] text-muted">None saved.</p>}
-                        {d.savedMessages.map((m, i) => (
-                          <div key={i} className="group flex items-center rounded hover:bg-hover">
-                            <button type="button" className="min-w-0 flex-1 truncate px-2 py-1 text-left" title={m.content} onClick={() => load(m)}>
-                              {m.name}
-                              {m.type === "binary" && <span className="ml-1 text-[10px] text-muted">bin</span>}
-                            </button>
-                            <button
-                              type="button"
-                              className="invisible px-1 text-muted hover:text-danger group-hover:visible"
-                              onClick={() => patch({ savedMessages: d.savedMessages.filter((_, j) => j !== i) })}
-                            >
-                              <Icon name="trash" size={12} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+    <VarRootContext.Provider value={tab.root}>
+      <Split
+        id="ws"
+        orientation="vertical"
+        panes={[
+          {
+            id: "ws-editor",
+            defaultSize: "45",
+            minSize: 150,
+            children: (
+              <div className="flex h-full flex-col">
+                <div className="flex items-center gap-2 px-3 py-2">
+                  <div className="min-w-0 flex-1 rounded border border-line bg-elevated">
+                    <CodeEditor singleLine extensions={varExt} value={d.url} placeholder="wss://example.com/socket" onEnter={connect} onChange={(url) => patch({ url })} />
                   </div>
-                )}
-                {section === "headers" && <KeyValueTable rows={d.headers} makeRow={kv} onChange={(headers) => patch({ headers })} />}
-                {section === "settings" && (
-                  <label className="grid grid-cols-[160px_1fr] items-center gap-3">
-                    <span>Subprotocols</span>
-                    <input
-                      className="mono rounded border border-line bg-elevated px-2 py-1.5"
-                      placeholder="chat.v1, chat.v2"
-                      value={d.subprotocols.join(", ")}
-                      onChange={(e) => patch({ subprotocols: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-                    />
-                  </label>
-                )}
+                  {status === "closed" ? (
+                    <Button variant="primary" className="w-28" disabled={!d.url.trim()} onClick={connect}>
+                      Connect
+                    </Button>
+                  ) : (
+                    <Button className="w-28" onClick={() => useWebSockets.getState().disconnect(tab.id)}>
+                      {status === "connecting" ? (
+                        <>
+                          <Spinner /> Connecting…
+                        </>
+                      ) : (
+                        <>
+                          <PulseDot /> Disconnect
+                        </>
+                      )}
+                    </Button>
+                  )}
+                  <Button onClick={() => void saveTab(tab.id)}>Save</Button>
+                </div>
+                <SectionTabs<Section>
+                  active={section}
+                  onSelect={setSection}
+                  sections={[
+                    { id: "message", label: "Message" },
+                    { id: "headers", label: "Headers", badge: d.headers.filter((h) => h.enabled && h.key).length },
+                    { id: "settings", label: "Settings" },
+                  ]}
+                />
+                <div className="min-h-0 flex-1 overflow-auto p-3">
+                  {section === "message" && (
+                    <div className="flex h-full min-h-0 gap-3">
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <div className="min-h-0 flex-1 rounded border border-line">
+                          <CodeEditor extensions={varExt} language={binary ? "text" : "json"} value={message} onChange={setMessage} />
+                        </div>
+                        <div className="mt-2 flex items-center gap-3">
+                          <label className="flex items-center gap-1">
+                            <input type="radio" checked={!binary} onChange={() => setBinary(false)} /> Text
+                          </label>
+                          <label className="flex items-center gap-1">
+                            <input type="radio" checked={binary} onChange={() => setBinary(true)} /> Binary (base64)
+                          </label>
+                          {binary && (
+                            <button type="button" className="text-[12px] text-accent hover:underline" onClick={() => setMessage(utf8ToBase64(message))}>
+                              Encode text as base64
+                            </button>
+                          )}
+                          {error && <span className="text-[12px] text-danger">{error}</span>}
+                          <div className="flex-1" />
+                          <Button onClick={saveMessage} disabled={!message}>
+                            Save Message
+                          </Button>
+                          <Button variant="primary" disabled={status !== "open" || !message} onClick={send}>
+                            Send
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex w-48 shrink-0 flex-col">
+                        <div className="mb-1 text-[11px] uppercase text-muted">Saved messages</div>
+                        <div className="min-h-0 flex-1 overflow-auto">
+                          {d.savedMessages.length === 0 && <p className="text-[12px] text-muted">None saved.</p>}
+                          {d.savedMessages.map((m, i) => (
+                            <div key={i} className="group flex items-center rounded hover:bg-hover">
+                              <button type="button" className="min-w-0 flex-1 truncate px-2 py-1 text-left" title={m.content} onClick={() => load(m)}>
+                                {m.name}
+                                {m.type === "binary" && <span className="ml-1 text-[10px] text-muted">bin</span>}
+                              </button>
+                              <button
+                                type="button"
+                                className="invisible px-1 text-muted hover:text-danger group-hover:visible"
+                                onClick={() => patch({ savedMessages: d.savedMessages.filter((_, j) => j !== i) })}
+                              >
+                                <Icon name="trash" size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {section === "headers" && <KeyValueTable rows={d.headers} makeRow={kv} onChange={(headers) => patch({ headers })} />}
+                  {section === "settings" && (
+                    <label className="grid grid-cols-[160px_1fr] items-center gap-3">
+                      <span>Subprotocols</span>
+                      <input
+                        className="mono rounded border border-line bg-elevated px-2 py-1.5"
+                        placeholder="chat.v1, chat.v2"
+                        value={d.subprotocols.join(", ")}
+                        onChange={(e) => patch({ subprotocols: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                      />
+                    </label>
+                  )}
+                </div>
               </div>
-            </div>
-          ),
-        },
-        { id: "ws-log", minSize: 100, children: <Log tabId={tab.id} /> },
-      ]}
-    />
+            ),
+          },
+          { id: "ws-log", minSize: 100, children: <Log tabId={tab.id} /> },
+        ]}
+      />
+    </VarRootContext.Provider>
   );
 }

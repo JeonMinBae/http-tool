@@ -1,6 +1,6 @@
 import type { Auth, AuthType } from "../../core/model";
+import { VarInput } from "../editor/VarInput";
 import { OAuth2Editor } from "./OAuth2Editor";
-
 const LABELS: Record<AuthType, string> = {
   inherit: "Inherit from parent",
   none: "No Auth",
@@ -29,7 +29,11 @@ function Field({ label, value, onChange, type = "text" }: { label: string; value
   return (
     <label className="grid grid-cols-[120px_1fr] items-center gap-3">
       <span className="text-muted">{label}</span>
-      <input type={type} className="mono rounded border border-line bg-elevated px-2 py-1.5 outline-none" value={value} onChange={(e) => onChange(e.target.value)} />
+      {type === "password" ? (
+        <input type="password" className="mono rounded border border-line bg-elevated px-2 py-1.5 outline-none" value={value} onChange={(e) => onChange(e.target.value)} />
+      ) : (
+        <VarInput className="mono rounded border border-line bg-elevated" value={value} onChange={onChange} />
+      )}
     </label>
   );
 }
