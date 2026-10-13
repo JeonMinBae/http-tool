@@ -12,6 +12,7 @@ import { useWorkspace } from "../state/workspace";
 import { resolveAuth, type Chain } from "./auth";
 import { ensureFreshToken, tokenKey } from "./oauth2";
 import { oauthDeps, resolveOAuth, tokenCache } from "../state/oauthTokens";
+import { consoleDetail } from "./consoleDetail";
 import { base64ToUtf8 } from "./encoding";
 import type { HttpRequestDoc } from "./model";
 import { buildChain, prepareRequest, withScheme } from "./prepare";
@@ -182,6 +183,7 @@ export async function executeDoc(target: ExecuteTarget, requestId: string = cryp
     elapsedMs: result?.elapsedMs,
     logs: out.logs,
     errors: error && !out.errors.includes(error) ? [...out.errors, error] : out.errors,
+    detail: consoleDetail({ prepared, result, error }),
   });
   if (prepared) {
     void useHistory

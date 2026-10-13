@@ -49,6 +49,7 @@ pub fn run() {
             files::file_save_base64,
             files::file_pick_text,
             files::dir_create_unique,
+            files::dir_create_new,
             fs_commands::collection_register,
             fs_commands::collection_unregister,
             fs_commands::fs_read_tree,
@@ -58,6 +59,7 @@ pub fn run() {
             fs_commands::fs_rename,
             fs_commands::fs_copy,
             fs_commands::fs_delete,
+            fs_commands::fs_open_dir,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

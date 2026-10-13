@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import CodeMirror, { EditorState, EditorView, keymap, Prec, type Extension } from "@uiw/react-codemirror";
+import { completionStatus } from "@codemirror/autocomplete";
 import { json } from "@codemirror/lang-json";
 import { xml } from "@codemirror/lang-xml";
 import { html } from "@codemirror/lang-html";
@@ -75,7 +76,8 @@ export function CodeEditor({ value, onChange, language = "text", readOnly, singl
           return tr.startState.update({ changes: { from: 0, to: tr.startState.doc.length, insert: text }, selection: { anchor: text.length } });
         }),
       );
-      if (onEnter) list.push(Prec.highest(keymap.of([{ key: "Enter", run: () => (onEnter(), true) }])));
+      // While the completion list is open, Enter picks a variable instead of sending.
+      if (onEnter) list.push(Prec.highest(keymap.of([{ key: "Enter", run: (v) => (completionStatus(v.state) === "active" ? false : (onEnter(), true)) }])));
     }
     if (lineWrapping || singleLine) list.push(EditorView.lineWrapping);
     if (onPaste)
@@ -96,7 +98,8 @@ export function CodeEditor({ value, onChange, language = "text", readOnly, singl
 
   return (
     <CodeMirror
-      className={className}
+      // @uiw/react-codemirror wraps .cm-editor in a div; without a height there, height:100% collapses to content height and nothing scrolls.
+      className={singleLine ? className : `h-full ${className}`}
       value={value}
       onChange={onChange}
       theme={dark ? "dark" : "light"}

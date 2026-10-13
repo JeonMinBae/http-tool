@@ -1,9 +1,10 @@
 import { open as openDialogPicker, save as saveDialogPicker } from "@tauri-apps/plugin-dialog";
-import { fileApi } from "../ipc";
+import { fileApi, shellApi } from "../ipc";
 import { sanitizeName, type TreeNode } from "../core/collectionRepo";
 import { countRequests, type ImportPlan, type TransferNode } from "../core/transfer/model";
-import { emptyRequest, emptyWebSocket, type HttpRequestDoc } from "../core/model";
+import { emptyCollection, emptyRequest, emptyWebSocket, type HttpRequestDoc } from "../core/model";
 import { samePath } from "../core/path";
+import { createSerial } from "../core/serial";
 import { useStreams } from "../state/streams";
 import { useExpanded } from "../state/treeExpand";
 import { useWebSockets } from "../state/websockets";
@@ -16,6 +17,10 @@ import { pickSaveLocation } from "./tabs/SaveAsDialog";
 
 const ws = () => useWorkspace.getState();
 const tabs = () => useTabs.getState();
+
+// Rename reads the file and rewrites it; a save landing in between would be overwritten
+// with the old content (e.g. Enter in the name field followed by ⌘S). Run them one at a time.
+const fileOps = createSerial();
 
 async function guard<T>(title: string, fn: () => Promise<T>): Promise<T | undefined> {
   try {
@@ -30,6 +35,21 @@ const importedMessage = (items: TransferNode[]) => {
   const n = countRequests(items);
   return `Imported ${n} ${n === 1 ? "request" : "requests"}`;
 };
+
+/** Asks for a name and a parent folder, then creates `<parent>/<name>/collection.yaml` and opens it. */
+export async function newCollection() {
+  const name = (await askText("New collection", "Name", "New Collection"))?.trim();
+  if (!name) return;
+  const parent = await openDialogPicker({ directory: true, multiple: false, title: "Choose where to create the collection" });
+  if (typeof parent !== "string") return;
+  await guard("Could not create collection", async () => {
+    const dir = await fileApi.createNewDir(parent, sanitizeName(name, "collection"));
+    const col = await ws().openCollection(dir);
+    await ws().saveCollectionDoc(col.root, emptyCollection(name));
+    useExpanded.getState().expand(col.root);
+    await ws().reload(col.root);
+  });
+}
 
 export async function openCollectionFromDialog() {
   const picked = await openDialogPicker({ directory: true, multiple: false, title: "Open collection folder" });
@@ -148,11 +168,20 @@ export async function newFolder(root: string, parent: string) {
 export async function renameNode(root: string, node: TreeNode) {
   const name = await askText(`Rename ${node.type}`, "Name", node.doc.name);
   if (!name || name === node.doc.name) return;
-  await guard("Could not rename", async () => {
-    const next = await collectionRepo.rename(node, name);
-    tabs().renamePath(node.path, next);
-    await ws().reload(root);
-    syncTabsWithTree(root);
+  await renameAt(root, node, name);
+}
+
+/** Renames a saved node on disk. Open tabs follow the new path; unsaved edits in them are kept. */
+export function renameAt(root: string, node: Pick<TreeNode, "type" | "path">, name: string): Promise<boolean> {
+  return fileOps(async () => {
+    const done = await guard("Could not rename", async () => {
+      const next = await collectionRepo.rename(node, name);
+      tabs().renamePath(node.path, next);
+      await ws().reload(root);
+      syncTabsWithTree(root);
+      return true;
+    });
+    return done ?? false;
   });
 }
 
@@ -204,7 +233,12 @@ export function newUntitledRequest(doc?: HttpRequestDoc) {
   tabs().open(null, null, doc ?? emptyRequest("Untitled Request"));
 }
 
-export async function saveTab(id: string): Promise<boolean> {
+/** Saves a tab after any pending rename, reading the tab only then so its path and name are current. */
+export function saveTab(id: string): Promise<boolean> {
+  return fileOps(() => saveTabNow(id));
+}
+
+async function saveTabNow(id: string): Promise<boolean> {
   const tab = tabs().tabs.find((t) => t.id === id);
   if (!tab) return false;
   const result = await guard("Could not save", async () => {
@@ -237,6 +271,10 @@ export async function saveTab(id: string): Promise<boolean> {
     return true;
   });
   return result ?? false;
+}
+
+export async function openInFileManager(path: string) {
+  await guard("Could not open folder", () => shellApi.openDir(path));
 }
 
 export async function saveActiveTab() {

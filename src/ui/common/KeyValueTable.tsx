@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from "react";
 import type { KeyValue } from "../../core/model";
+import type { Extension } from "@codemirror/state";
 import { Icon } from "./icons";
+import { CodeEditor } from "../editor/CodeEditor";
 
 export interface KeyValueTableProps<T extends KeyValue> {
   rows: T[];
@@ -16,9 +18,18 @@ export interface KeyValueTableProps<T extends KeyValue> {
   extraHeader?: string;
   allowBulk?: boolean;
   readOnly?: boolean;
+  /** Editor extensions for key/value cells ({{variable}} highlight + completion); plain inputs when omitted. */
+  extensions?: Extension[];
 }
 
 const cell = "h-7 w-full bg-transparent px-2 outline-none placeholder:text-muted/60 focus:bg-elevated";
+
+export function KeyValueCell({ value, onChange, placeholder, readOnly, extensions }: { value: string; onChange: (v: string) => void; placeholder?: string; readOnly?: boolean; extensions?: Extension[] }) {
+  if (!extensions) {
+    return <input className={`${cell} mono`} value={value} readOnly={readOnly} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />;
+  }
+  return <CodeEditor singleLine className="min-h-7" value={value} readOnly={readOnly} placeholder={placeholder} extensions={extensions} onChange={onChange} />;
+}
 
 /** Bulk format: one `key: value` per line, disabled rows prefixed with `//`. */
 export function toBulk(rows: KeyValue[]): string {
@@ -50,6 +61,7 @@ export function KeyValueTable<T extends KeyValue>({
   extraHeader,
   allowBulk = true,
   readOnly,
+  extensions,
 }: KeyValueTableProps<T>) {
   const [bulk, setBulk] = useState<string | null>(null);
 
@@ -120,25 +132,13 @@ export function KeyValueTable<T extends KeyValue>({
                   )}
                 </td>
                 <td className="border border-line">
-                  <input
-                    className={`${cell} mono`}
-                    value={row.key}
-                    readOnly={readOnly}
-                    placeholder={placeholder ? keyPlaceholder : ""}
-                    onChange={(e) => patch({ key: e.target.value } as Partial<T>)}
-                  />
+                  <KeyValueCell value={row.key} readOnly={readOnly} placeholder={placeholder ? keyPlaceholder : ""} extensions={extensions} onChange={(key) => patch({ key } as Partial<T>)} />
                 </td>
                 <td className="border border-line">
                   {renderValue && !placeholder ? (
                     renderValue(row, patch)
                   ) : (
-                    <input
-                      className={`${cell} mono`}
-                      value={row.value}
-                      readOnly={readOnly}
-                      placeholder={placeholder ? valuePlaceholder : ""}
-                      onChange={(e) => patch({ value: e.target.value } as Partial<T>)}
-                    />
+                    <KeyValueCell value={row.value} readOnly={readOnly} placeholder={placeholder ? valuePlaceholder : ""} extensions={extensions} onChange={(value) => patch({ value } as Partial<T>)} />
                   )}
                 </td>
                 {renderExtra && <td className="border border-line">{renderExtra(row, patch)}</td>}

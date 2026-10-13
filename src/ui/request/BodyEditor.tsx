@@ -1,7 +1,7 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import type { Body, BodyType, FormField, KeyValue, RawLanguage } from "../../core/model";
 import { Button } from "../common/Button";
-import { KeyValueTable } from "../common/KeyValueTable";
+import { KeyValueCell, KeyValueTable } from "../common/KeyValueTable";
 import type { Extension } from "@codemirror/state";
 import { CodeEditor } from "../editor/CodeEditor";
 
@@ -95,12 +95,13 @@ export function BodyEditor({ body, onChange, extensions }: { body: Body; onChang
       )}
 
       {body.type === "urlencoded" && (
-        <KeyValueTable rows={body.fields} onChange={(fields) => onChange({ ...body, fields })} makeRow={(key, value, enabled) => ({ key, value, enabled })} />
+        <KeyValueTable rows={body.fields} extensions={extensions} onChange={(fields) => onChange({ ...body, fields })} makeRow={(key, value, enabled) => ({ key, value, enabled })} />
       )}
 
       {body.type === "form-data" && (
         <KeyValueTable<FormField>
           rows={body.fields}
+          extensions={extensions}
           onChange={(fields) => onChange({ ...body, fields })}
           makeRow={(key, value, enabled, prev) => ({ key, value, enabled, kind: prev?.kind ?? "text" })}
           extraHeader="Type"
@@ -121,7 +122,7 @@ export function BodyEditor({ body, onChange, extensions }: { body: Body; onChang
                 </button>
               </div>
             ) : (
-              <input className="mono h-7 w-full bg-transparent px-2 outline-none focus:bg-elevated" value={row.value} onChange={(e) => update({ value: e.target.value })} />
+              <KeyValueCell value={row.value} extensions={extensions} onChange={(value) => update({ value })} />
             )
           }
         />

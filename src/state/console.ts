@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { ConsoleDetail } from "../core/consoleDetail";
 import type { LogEntry } from "../script/protocol";
 
 export interface ConsoleEntry {
@@ -10,6 +11,7 @@ export interface ConsoleEntry {
   elapsedMs?: number;
   logs: (LogEntry & { source: string })[];
   errors: string[];
+  detail?: ConsoleDetail;
 }
 
 interface ConsoleState {

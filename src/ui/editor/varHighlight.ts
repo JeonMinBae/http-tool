@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { Decoration, EditorView, hoverTooltip, MatchDecorator, ViewPlugin, type DecorationSet, type ViewUpdate } from "@uiw/react-codemirror";
 import { RangeSetBuilder } from "@codemirror/state";
 import { resolveVar, varSource, type VarScopes } from "../../core/variables";
@@ -59,8 +58,3 @@ export function varHighlight(scopes: VarScopes, secrets: Set<string>) {
   return [theme, plugin, tooltip];
 }
 
-/** Memoized highlight extension that refreshes when variable values change. */
-export function useVarHighlight(scopes: VarScopes, secrets: Set<string>) {
-  const key = JSON.stringify(scopes) + [...secrets].join(",");
-  return useMemo(() => varHighlight(scopes, secrets), [key]);
-}

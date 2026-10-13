@@ -203,6 +203,21 @@ pub fn fs_delete(state: State<AppState>, path: String) -> AppResult<()> {
     Ok(())
 }
 
+/// A folder inside an open collection (the root included) that may be shown in the OS file manager.
+fn dir_to_open(roots: &[PathBuf], p: &Path) -> AppResult<PathBuf> {
+    let canon = ensure_inside(roots, p)?;
+    if !canon.is_dir() {
+        return Err(AppError::Invalid(format!("not a folder: {}", p.display())));
+    }
+    Ok(canon)
+}
+
+#[tauri::command]
+pub fn fs_open_dir(state: State<AppState>, path: String) -> AppResult<()> {
+    let dir = dir_to_open(&roots(&state), Path::new(&path))?;
+    tauri_plugin_opener::open_path(dir, None::<&str>).map_err(|e| AppError::Invalid(e.to_string()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -216,6 +231,16 @@ mod tests {
         fs::write(root.join("users/notes.txt"), "x").unwrap();
         fs::create_dir_all(root.join(".git")).unwrap();
         (dir, vec![root])
+    }
+
+    #[test]
+    fn dir_to_open_allows_folders_inside_roots_only() {
+        let (_d, roots) = setup();
+        assert!(dir_to_open(&roots, &roots[0]).is_ok());
+        assert!(dir_to_open(&roots, &roots[0].join("users")).is_ok());
+        assert!(dir_to_open(&roots, &roots[0].join("collection.yaml")).is_err());
+        let outside = tempfile::tempdir().unwrap();
+        assert!(dir_to_open(&roots, outside.path()).is_err());
     }
 
     #[test]

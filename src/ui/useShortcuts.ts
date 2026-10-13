@@ -2,10 +2,10 @@ import { useEffect } from "react";
 import { executeRequest } from "../core/execute";
 import { closeTab, newUntitledRequest, saveActiveTab } from "./actions";
 import { useResponses } from "../state/responses";
+import { useSidebar } from "../state/sidebar";
 import { useTabs } from "../state/tabs";
 import { isDialogOpen } from "./common/dialogs";
 import { cycleBodyMode } from "./response/ResponseViewer";
-import { openCommandPalette } from "./search/CommandPalette";
 import { openSettings } from "./settings/SettingsDialog";
 
 export const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
@@ -53,7 +53,7 @@ export function useShortcuts() {
         newUntitledRequest();
       } else if (key === "k") {
         e.preventDefault();
-        openCommandPalette();
+        if (!isDialogOpen()) useSidebar.getState().focusSearch();
       } else if (key === "w") {
         e.preventDefault();
         const id = useTabs.getState().activeId;

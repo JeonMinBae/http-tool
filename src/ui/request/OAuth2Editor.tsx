@@ -5,16 +5,8 @@ import { oauthDeps, resolveOAuth, tokenCache, useOAuthTokens } from "../../state
 import { toast } from "../../state/toasts";
 import { Button } from "../common/Button";
 import { Spinner } from "../common/Spinner";
-import { useScopes } from "../editor/useScopes";
-
-function Field({ label, value, onChange, placeholder, type = "text" }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
-  return (
-    <label className="grid grid-cols-[140px_1fr] items-center gap-3">
-      <span className="text-muted">{label}</span>
-      <input type={type} className="mono rounded border border-line bg-elevated px-2 py-1.5 outline-none" placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
-    </label>
-  );
-}
+import { useScopes, useVarExtension } from "../editor/useScopes";
+import { VarField } from "./VarField";
 
 function Select<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: [T, string][]; onChange: (v: T) => void }) {
   return (
@@ -33,6 +25,7 @@ function Select<T extends string>({ label, value, options, onChange }: { label: 
 
 export function OAuth2Editor({ auth, onChange, root }: { auth: OAuth2Auth; onChange: (a: OAuth2Auth) => void; root: string | null }) {
   const { scopes } = useScopes(root);
+  const ext = useVarExtension(root);
   const resolved = resolveOAuth(auth, scopes);
   const key = tokenKey(resolved);
   const token = useOAuthTokens((s) => s.tokens[key]);
@@ -57,14 +50,14 @@ export function OAuth2Editor({ auth, onChange, root }: { auth: OAuth2Auth; onCha
   return (
     <div className="flex flex-col gap-3">
       <Select label="Grant type" value={auth.grant} options={[["client_credentials", "Client Credentials"], ["authorization_code", "Authorization Code"]]} onChange={(grant) => set({ grant })} />
-      {auth.grant === "authorization_code" && <Field label="Auth URL" value={auth.authUrl} placeholder="https://id.example.com/authorize" onChange={(authUrl) => set({ authUrl })} />}
-      <Field label="Token URL" value={auth.tokenUrl} placeholder="https://id.example.com/token" onChange={(tokenUrl) => set({ tokenUrl })} />
-      <Field label="Client ID" value={auth.clientId} onChange={(clientId) => set({ clientId })} />
-      <Field label="Client Secret" type="password" value={auth.clientSecret} placeholder="{{clientSecret}}" onChange={(clientSecret) => set({ clientSecret })} />
-      <Field label="Scope" value={auth.scope} placeholder="read write" onChange={(scope) => set({ scope })} />
+      {auth.grant === "authorization_code" && <VarField labelWidth={140} extensions={ext} label="Auth URL" value={auth.authUrl} placeholder="https://id.example.com/authorize" onChange={(authUrl) => set({ authUrl })} />}
+      <VarField labelWidth={140} extensions={ext} label="Token URL" value={auth.tokenUrl} placeholder="https://id.example.com/token" onChange={(tokenUrl) => set({ tokenUrl })} />
+      <VarField labelWidth={140} extensions={ext} label="Client ID" value={auth.clientId} onChange={(clientId) => set({ clientId })} />
+      <VarField labelWidth={140} extensions={ext} label="Client Secret" value={auth.clientSecret} placeholder="{{clientSecret}}" onChange={(clientSecret) => set({ clientSecret })} />
+      <VarField labelWidth={140} extensions={ext} label="Scope" value={auth.scope} placeholder="read write" onChange={(scope) => set({ scope })} />
       {auth.grant === "authorization_code" && (
         <>
-          <Field label="Redirect URI" value={auth.redirectUri} placeholder="Default: http://127.0.0.1:<random port>/callback" onChange={(redirectUri) => set({ redirectUri })} />
+          <VarField labelWidth={140} extensions={ext} label="Redirect URI" value={auth.redirectUri} placeholder="Default: http://127.0.0.1:<random port>/callback" onChange={(redirectUri) => set({ redirectUri })} />
           <label className="grid grid-cols-[140px_1fr] items-center gap-3">
             <span className="text-muted">PKCE</span>
             <input type="checkbox" className="justify-self-start" checked={auth.usePkce} onChange={(e) => set({ usePkce: e.target.checked })} />
@@ -72,7 +65,7 @@ export function OAuth2Editor({ auth, onChange, root }: { auth: OAuth2Auth; onCha
         </>
       )}
       <Select label="Client auth" value={auth.clientAuth} options={[["header", "Basic auth header"], ["body", "In request body"]]} onChange={(clientAuth) => set({ clientAuth })} />
-      <Field label="Header prefix" value={auth.tokenPrefix} onChange={(tokenPrefix) => set({ tokenPrefix })} />
+      <VarField labelWidth={140} extensions={ext} label="Header prefix" value={auth.tokenPrefix} onChange={(tokenPrefix) => set({ tokenPrefix })} />
       <p className="text-[12px] text-muted">Tip: keep the client secret in a secret variable, e.g. {"{{clientSecret}}"}.</p>
 
       <div className="mt-2 rounded border border-line p-3">

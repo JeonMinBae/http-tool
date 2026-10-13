@@ -3,7 +3,8 @@ import { buildScopes } from "../../core/variables";
 import { samePath } from "../../core/path";
 import { useVariables } from "../../state/variables";
 import { useWorkspace } from "../../state/workspace";
-import { useVarHighlight } from "./varHighlight";
+import { varHighlight } from "./varHighlight";
+import { varCompletion } from "./varCompletion";
 
 /** Current variable scopes for a collection root (reactive). */
 export function useScopes(root: string | null) {
@@ -17,7 +18,9 @@ export function useScopes(root: string | null) {
   }, [globals, env, collection]);
 }
 
+/** {{variable}} highlight + completion for a collection root, rebuilt when variable values change. */
 export function useVarExtension(root: string | null) {
   const { scopes, secrets } = useScopes(root);
-  return useVarHighlight(scopes, secrets);
+  const key = JSON.stringify(scopes) + [...secrets].join(",");
+  return useMemo(() => [...varHighlight(scopes, secrets), ...varCompletion(scopes, secrets)], [key]);
 }

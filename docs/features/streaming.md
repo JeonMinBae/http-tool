@@ -17,8 +17,9 @@
 
 ### 연결
 
+- URL 위의 이름 필드에서 이름을 바꾼다 ([요청 편집](request.md)과 같다).
 - URL(`ws://`, `wss://`)에 변수를 쓸 수 있다.
-- Headers 탭에서 연결 요청 헤더를, Settings 탭에서 서브프로토콜을 지정한다.
+- Headers 탭에서 연결 요청 헤더를, Settings 탭에서 서브프로토콜을 지정한다. Headers 표의 키·값에도 변수 하이라이트와 자동완성이 적용된다.
 - Connect / Disconnect로 연결을 열고 닫는다. 연결하는 동안은 버튼에 스피너와 Connecting…이, 연결된 동안은 깜빡이는 점과 Disconnect가 보인다.
 - `wss://`는 전역 설정의 Verify SSL을 따른다.
 - 프록시 설정은 적용되지 않는다.

@@ -8,17 +8,25 @@
 - 여러 컬렉션을 동시에 열 수 있다. 열린 컬렉션 목록은 재시작 시 복원되고, 폴더가 사라졌으면 알려준다.
 - 컬렉션 우클릭 → Close Collection으로 닫는다. 폴더는 지워지지 않는다. 저장하지 않은 탭이 있으면 확인한다.
 
+## 새 컬렉션 만들기
+
+- 사이드바 상단의 New collection 버튼(폴더 열기 버튼 옆)이나, 컬렉션이 없을 때 보이는 "Create a new collection" 링크로 시작한다.
+- 이름을 입력하고 상위 폴더를 고르면 `<상위 폴더>/<이름>/collection.yaml`을 만들어 컬렉션으로 연다.
+- 같은 이름의 폴더가 이미 있으면 덮어쓰지 않고 오류 토스트로 알린다. 이름 입력이나 폴더 선택을 취소하면 아무 일도 하지 않는다.
+
 ## 트리 조작
 
-**컬렉션 메뉴:** New Request, New WebSocket, New Folder, Collection Settings, Run Collection, Export…, Copy Path, Close Collection
+**컬렉션 메뉴:** New Request, New WebSocket, New Folder, Collection Settings, Run Collection, Export…, Open in File Manager, Copy Path, Close Collection
 
-**폴더 메뉴:** New Request, New WebSocket, New Folder, Folder Settings, Run Folder, Rename, Duplicate, Export…, Delete
+**폴더 메뉴:** New Request, New WebSocket, New Folder, Folder Settings, Run Folder, Rename, Duplicate, Export…, Open in File Manager, Delete
 
 **요청 메뉴:** Rename, Duplicate, Export…, Delete
 
 - 항목을 만들면 상위 폴더가 자동으로 펼쳐지고, 요청은 바로 탭으로 열린다.
 - **드래그앤드롭:** 폴더 위에 놓으면 그 안으로 이동하고, 항목 사이에 놓으면 순서가 바뀐다. 다른 폴더로 옮기면 파일이 실제로 이동한다.
 - 이름 변경은 화면 이름(`name`)과 파일·폴더 이름을 함께 바꾼다. 열린 탭은 새 경로를 따라간다.
+- 요청·WebSocket 편집기의 URL 위 **이름 필드**에서도 바로 바꿀 수 있다. Enter 또는 포커스를 벗어나면 화면 이름과 파일 이름을 즉시 바꾸고, 저장하지 않은 다른 편집 내용은 그대로 둔다. Esc는 취소이고, 비었거나 그대로면 무시한다. 아직 저장하지 않은 요청은 파일 없이 초안의 이름만 바뀐다.
+- Open in File Manager는 컬렉션·폴더를 OS 파일 관리자로 연다. 열린 컬렉션 안의 폴더만 열 수 있다.
 - 삭제는 확인 후 파일·폴더를 지운다. 열린 탭은 닫히지만, 저장하지 않은 변경이 있는 요청 탭은 "저장되지 않은 요청"으로 남아 내용을 잃지 않는다.
 - 드래그앤드롭은 같은 컬렉션 안에서만 된다. 컬렉션 이름 위에 놓으면 루트로 옮긴다.
 - 빈 컬렉션에는 `+ Add a request` 링크가 보인다.

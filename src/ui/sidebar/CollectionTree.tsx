@@ -13,6 +13,7 @@ import {
   newRequest,
   newWebSocket,
   openCollectionSettings,
+  openInFileManager,
   openNode,
   openRunner,
   renameNode,
@@ -22,6 +23,7 @@ import { showMenu, type MenuEntry } from "../common/ContextMenu";
 import { Icon } from "../common/icons";
 import { methodColor, methodLabel } from "../common/methodColor";
 import { openExportDialog } from "../transfer/ExportDialog";
+import { useTreeExpand } from "./treeExpandContext";
 
 const DRAG_TYPE = "application/x-httptool-node";
 type DropMode = "into" | "before";
@@ -40,6 +42,7 @@ function nodeMenu(col: LoadedCollection, node: TreeNode): MenuEntry[] {
       { label: "New Folder", onSelect: () => newFolder(root, node.path) },
       { label: "Folder Settings", onSelect: () => openNode(root, node) },
       { label: "Run Folder", onSelect: () => openRunner(root, node.path, node.doc.name) },
+      { label: "Open in File Manager", onSelect: () => void openInFileManager(node.path) },
       "separator",
     );
   }
@@ -85,7 +88,7 @@ const Chevron = ({ open }: { open: boolean }) => (
 );
 
 function Row({ col, node, depth }: { col: LoadedCollection; node: TreeNode; depth: number }) {
-  const { expanded, toggle } = useExpanded();
+  const { expanded, toggle, filtering } = useTreeExpand();
   const activePath = useActivePath();
   const [drop, setDrop] = useState<DropMode | null>(null);
   const isOpen = node.type === "folder" && expanded.has(node.path);
@@ -101,12 +104,13 @@ function Row({ col, node, depth }: { col: LoadedCollection; node: TreeNode; dept
     return e.clientY - rect.top < rect.height * 0.3 ? "before" : "into";
   };
   const onDragOver = (e: DragEvent) => {
-    if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
+    if (filtering || !e.dataTransfer.types.includes(DRAG_TYPE)) return;
     e.preventDefault();
     setDrop(modeFor(e));
   };
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
+    if (filtering) return;
     const mode = modeFor(e);
     setDrop(null);
     const data = JSON.parse(e.dataTransfer.getData(DRAG_TYPE) || "null") as { root: string; path: string } | null;
@@ -130,7 +134,7 @@ function Row({ col, node, depth }: { col: LoadedCollection; node: TreeNode; dept
   return (
     <>
       <div
-        draggable
+        draggable={!filtering}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDragLeave={() => setDrop(null)}
@@ -177,7 +181,7 @@ function Row({ col, node, depth }: { col: LoadedCollection; node: TreeNode; dept
 }
 
 export function CollectionTree({ col }: { col: LoadedCollection }) {
-  const { expanded, toggle } = useExpanded();
+  const { expanded, toggle, filtering } = useTreeExpand();
   const [drop, setDrop] = useState(false);
   const isOpen = expanded.has(col.root);
 
@@ -189,6 +193,7 @@ export function CollectionTree({ col }: { col: LoadedCollection }) {
     { label: "Run Collection", onSelect: () => openRunner(col.root, col.root, col.doc.name) },
     { label: "Export…", onSelect: () => openExportDialog(col) },
     "separator",
+    { label: "Open in File Manager", onSelect: () => void openInFileManager(col.root) },
     {
       label: "Copy Path",
       onSelect: () =>
@@ -203,6 +208,7 @@ export function CollectionTree({ col }: { col: LoadedCollection }) {
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
     setDrop(false);
+    if (filtering) return;
     const data = JSON.parse(e.dataTransfer.getData(DRAG_TYPE) || "null") as { root: string; path: string } | null;
     if (data && samePath(data.root, col.root)) void moveNode(col.root, data.path, col.root);
   };
@@ -215,7 +221,7 @@ export function CollectionTree({ col }: { col: LoadedCollection }) {
         onDoubleClick={() => openCollectionSettings(col.root)}
         onContextMenu={(e) => showMenu(e, menu)}
         onDragOver={(e) => {
-          if (e.dataTransfer.types.includes(DRAG_TYPE)) {
+          if (!filtering && e.dataTransfer.types.includes(DRAG_TYPE)) {
             e.preventDefault();
             setDrop(true);
           }
