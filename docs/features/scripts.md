@@ -34,7 +34,22 @@ Post: 컬렉션 → 바깥 폴더 → 안쪽 폴더 → 요청
 
 `pm.sendRequest`는 전역 네트워크 설정과 쿠키 저장소를 쓰지만, 컬렉션 인증은 붙이지 않는다.
 
+`pm.request.url`은 경로 파라미터(`{이름}`)를 치환하기 전의 URL이다. `{id}`가 그대로 들어 있고, 치환과 인코딩은 스크립트가 끝난 뒤 전송 직전에 한다. [경로 파라미터](request.md#경로-파라미터-path-params)
+
 환경을 선택하지 않은 상태에서 `pm.environment.set()`을 호출하면 무시되고 콘솔에 경고가 남는다.
+
+### 목록형 변수
+
+목록형 변수의 항목은 `'목록:항목'` 이름으로 다룬다. 스코프 객체(`pm.variables`, `pm.environment` 등)의 `get`, `has`, `set`, `unset`이 모두 적용된다.
+
+```js
+pm.environment.get("tool:A");          // 항목 읽기
+pm.environment.set("tool:C", "x");     // 항목 추가·수정. 목록이 없으면 만들어진다
+pm.environment.unset("tool:A");        // 항목 삭제
+pm.environment.toObject();             // { "tool:A": "...", "tool:B": "..." } 처럼 항목을 펼쳐서 돌려준다
+```
+
+- 요청이 끝나면 변경이 해당 스코프의 목록에 저장된다 (일반 변수와 같은 규칙). [변수와 환경](variables.md#목록형-변수)
 
 ### 예시
 

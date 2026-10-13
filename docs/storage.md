@@ -35,8 +35,12 @@ kind: http
 name: Create user
 seq: 2
 method: POST
-url: "{{baseUrl}}/users"
+url: "{{baseUrl}}/users/{id}"
 params: []
+pathParams:
+  - key: id
+    value: "42"
+    description: 사용자 ID
 headers:
   - key: X-Trace
     value: "1"
@@ -56,11 +60,37 @@ scripts:
 settings: {}
 ```
 
+`pathParams`는 URL 경로의 `{이름}`에 채운 값이다. 저장할 때 URL에 있는 이름만 URL 순서대로 남기고, 필드가 없는 예전 파일은 빈 목록으로 읽는다. [경로 파라미터](features/request.md#경로-파라미터-path-params)
+
 `kind`는 `http`, `websocket`, `folder`, `collection` 중 하나이며, 없거나 맞지 않으면 읽기 오류다. 그 밖의 필드가 빠졌거나 값이 잘못됐으면 읽을 때 기본값으로 보정한다.
+
+### 변수
+
+`collection.yaml`의 `variables` 항목은 일반 변수와 목록형 변수 두 형태다. 목록형은 `value` 대신 `type: list`와 `items`를 가진다.
+
+```yaml
+variables:
+  - key: baseUrl
+    value: https://api.example.com
+    enabled: true
+    secret: false
+  - key: tool
+    type: list
+    enabled: true
+    secret: false
+    items:
+      - key: A
+        value: alpha
+        enabled: true
+```
+
+`type`이 없으면 일반 변수다. 환경·전역 변수(`environments.json`, `globals.json`)도 같은 형태다.
 
 ### 비밀 변수
 
 컬렉션 변수에 `secret: true`를 켜면 값은 `collection.yaml`에 빈 문자열로 저장되고, 실제 값은 앱 데이터의 `secrets/<컬렉션 경로의 sha256>.json`에 저장된다. 컬렉션 폴더를 공유해도 토큰·비밀번호가 함께 나가지 않는다.
+
+목록형 변수가 secret이면 항목 값이 같은 파일에 `목록:항목` 키로 저장된다 (예: `tool:A`). 일반 변수 이름에는 `:`를 쓸 수 없어 키가 겹치지 않는다.
 
 ## 앱 데이터 폴더
 

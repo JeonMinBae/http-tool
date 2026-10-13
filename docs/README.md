@@ -16,7 +16,7 @@ macOS와 Windows에서 동작하는 가벼운 HTTP 클라이언트다. Postman·
 | [컬렉션과 폴더](features/collections.md) | 폴더 기반 요청 저장, 트리 조작 |
 | [요청 편집](features/request.md) | URL, Params, Headers, Body, Cookies, Settings |
 | [인증](features/auth.md) | Bearer, Basic, API Key, OAuth 2.0, 상속 |
-| [변수와 환경](features/variables.md) | 4단계 변수 스코프, 환경 전환, 비밀 변수 |
+| [변수와 환경](features/variables.md) | 4단계 변수 스코프, 목록형 변수, 환경 전환, 비밀 변수 |
 | [스크립트](features/scripts.md) | Pre/Post 스크립트, `pm` API, 샌드박스 |
 | [응답 보기](features/response.md) | Body, Headers, Cookies, 보낸 요청, Tests |
 | [cURL 변환](features/curl.md) | 가져오기와 내보내기 (bash, cmd, PowerShell) |
