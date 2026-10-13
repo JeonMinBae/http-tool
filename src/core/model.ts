@@ -60,6 +60,12 @@ export interface RequestSettings {
 export const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"] as const;
 export type HttpMethod = (typeof HTTP_METHODS)[number];
 
+export interface PathParam {
+  key: string;
+  value: string;
+  description: string;
+}
+
 export interface HttpRequestDoc {
   kind: "http";
   name: string;
@@ -67,6 +73,7 @@ export interface HttpRequestDoc {
   method: HttpMethod;
   url: string;
   params: KeyValue[];
+  pathParams: PathParam[];
   headers: KeyValue[];
   cookies: KeyValue[];
   body: Body;
@@ -152,6 +159,7 @@ export function emptyRequest(name: string, seq = 0): HttpRequestDoc {
     method: "GET",
     url: "",
     params: [],
+    pathParams: [],
     headers: [],
     cookies: [],
     body: { type: "none" },
