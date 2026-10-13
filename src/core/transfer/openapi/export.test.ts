@@ -46,6 +46,23 @@ describe("toOpenApi", () => {
     expect(spec.components).toEqual({ securitySchemes: { bearerAuth: { type: "http", scheme: "bearer" } } });
   });
 
+  it("exports path param values as examples and descriptions", () => {
+    const r = {
+      ...emptyRequest("u"),
+      url: "{{baseUrl}}/users/{id}/{empty}",
+      pathParams: [
+        { key: "id", value: "7", description: "user id" },
+        { key: "empty", value: "", description: "" },
+      ],
+    };
+    const { spec } = toOpenApi({ title: "t", collection: emptyCollection("c"), items: [r] });
+    const params = (spec.paths as Record<string, Record<string, Obj>>)["/users/{id}/{empty}"].get.parameters;
+    expect(params).toEqual([
+      { name: "id", in: "path", required: true, schema: { type: "string" }, description: "user id", example: "7" },
+      { name: "empty", in: "path", required: true, schema: { type: "string" } },
+    ]);
+  });
+
   it("skips websocket and duplicate path+method with warnings", () => {
     const { spec, warnings } = toOpenApi({
       title: "API",
@@ -80,7 +97,7 @@ describe("toOpenApi", () => {
     const { spec } = toOpenApi({ title: "API", collection, items: [{ ...emptyFolder("Users"), items: [get] }] });
     const plan = importOpenApi(JSON.parse(serializeOpenApi(spec, "json")));
     const r = (plan.items[0] as TransferFolder).items[0] as HttpRequestDoc;
-    expect(r).toMatchObject({ name: "Get user", method: "GET", url: "{{baseUrl}}/users/{{id}}?q=1" });
+    expect(r).toMatchObject({ name: "Get user", method: "GET", url: "{{baseUrl}}/users/{id}?q=1" });
     expect(plan.collection.variables.find((v) => v.key === "baseUrl")?.value).toBe("https://api.test");
   });
 
