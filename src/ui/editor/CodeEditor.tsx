@@ -28,6 +28,9 @@ export function usePrefersDark() {
   return dark;
 }
 
+/** Swallows Mod-Enter (default: insert blank line) so the global shortcut can send the request. */
+const reserveSendKey = Prec.highest(keymap.of([{ key: "Mod-Enter", run: () => true }]));
+
 const baseTheme = EditorView.theme({
   "&": { fontSize: "12px", height: "100%", backgroundColor: "transparent" },
   ".cm-scroller": { fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" },
@@ -61,7 +64,7 @@ export interface CodeEditorProps {
 export function CodeEditor({ value, onChange, language = "text", readOnly, singleLine, placeholder, onEnter, extensions = [], className = "", lineWrapping, onPaste, basicAutocomplete = true }: CodeEditorProps) {
   const dark = usePrefersDark();
   const exts = useMemo(() => {
-    const list: Extension[] = [baseTheme, ...LANGS[language](), ...extensions];
+    const list: Extension[] = [baseTheme, reserveSendKey, ...LANGS[language](), ...extensions];
     if (singleLine) {
       list.push(
         singleLineTheme,

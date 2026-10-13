@@ -43,6 +43,8 @@ const useDialogs = create<DialogState>((set, get) => ({
   pop: (d) => set({ stack: get().stack.filter((x) => x !== d) }),
 }));
 
+export const isDialogOpen = () => useDialogs.getState().stack.length > 0;
+
 /** Resolves with the id of the clicked button, or "cancel" when dismissed. */
 export function askChoice(title: string, message: string, buttons: { id: string; label: string; variant?: "primary" | "danger" }[]): Promise<string> {
   return new Promise((resolve) => useDialogs.getState().push({ kind: "choice", title, message, buttons, resolve }));

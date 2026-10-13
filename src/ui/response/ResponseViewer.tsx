@@ -35,6 +35,13 @@ function useArrivalFlash(tabId: string, requestId: string) {
   return flash;
 }
 
+const CYCLE_BODY_MODE = "cycle-body-mode";
+
+/** Switches the visible response body to its next view mode (Pretty → Raw → Preview). */
+export function cycleBodyMode() {
+  window.dispatchEvent(new Event(CYCLE_BODY_MODE));
+}
+
 const LANG: Record<BodyKind, EditorLanguage> = { json: "json", xml: "xml", html: "html", image: "text", text: "text", binary: "text" };
 
 function Table({ rows }: { rows: [string, string][] }) {
@@ -61,6 +68,14 @@ function Body({ r }: { r: HttpResult }) {
   const modes: BodyMode[] = kind === "binary" ? [] : kind === "image" ? ["preview"] : kind === "html" ? ["pretty", "raw", "preview"] : ["pretty", "raw"];
   const [mode, setMode] = useState<BodyMode>(kind === "image" ? "preview" : tooLarge ? "raw" : "pretty");
   const active = modes.includes(mode) ? mode : modes[0];
+  const enabled = modes.filter((m) => !(m === "pretty" && tooLarge)).join(",");
+  useEffect(() => {
+    const list = enabled.split(",") as BodyMode[];
+    if (list.length < 2) return;
+    const next = () => setMode(list[(list.indexOf(active) + 1) % list.length]);
+    window.addEventListener(CYCLE_BODY_MODE, next);
+    return () => window.removeEventListener(CYCLE_BODY_MODE, next);
+  }, [enabled, active]);
   const pretty = useMemo(() => {
     if (active !== "pretty") return "";
     return kind === "json" ? prettyJson(text) : kind === "xml" || kind === "html" ? prettyXml(text) : text;
