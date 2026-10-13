@@ -42,7 +42,8 @@ function preparedBodyText(b: PreparedBody): string | null {
 function responseBody(r: HttpResult): ClippedText {
   if (r.streaming) return { text: "<event stream: see the response panel>", truncated: false };
   if (!r.isText) return { text: `<binary ${r.size} bytes>`, truncated: false };
-  return decodeHead(base64ToBytes(r.bodyBase64));
+  // Decode only what is kept; one byte past the limit is enough to know the body was cut.
+  return decodeHead(base64ToBytes(r.bodyBase64.slice(0, Math.ceil((CONSOLE_BODY_LIMIT + 1) / 3) * 4)));
 }
 
 export function consoleDetail({ prepared, result, error }: { prepared?: PreparedRequest; result?: HttpResult; error?: string }): ConsoleDetail {
