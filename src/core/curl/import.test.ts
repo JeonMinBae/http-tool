@@ -56,6 +56,10 @@ describe("parseCurl", () => {
     expect(() => parseCurl("curl -H 'a: b'")).toThrow(/URL/);
   });
 
+  it("creates path params from {name} segments", () => {
+    expect(parseCurl("curl https://a.test/u/{id}").request.pathParams).toEqual([{ key: "id", value: "", description: "" }]);
+  });
+
   it("supports PowerShell backtick continuation and curl.exe", () => {
     const r = parseCurl("curl.exe 'https://a.com' `\n  -H 'A: it''s'");
     expect(r.request.headers).toEqual([{ key: "A", value: "it's", enabled: true }]);

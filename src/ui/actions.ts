@@ -4,6 +4,7 @@ import { sanitizeName, type TreeNode } from "../core/collectionRepo";
 import { countRequests, type ImportPlan, type TransferNode } from "../core/transfer/model";
 import { emptyRequest, emptyWebSocket, type HttpRequestDoc } from "../core/model";
 import { samePath } from "../core/path";
+import { visiblePathParams } from "../core/pathParams";
 import { useStreams } from "../state/streams";
 import { useExpanded } from "../state/treeExpand";
 import { useWebSockets } from "../state/websockets";
@@ -208,7 +209,8 @@ export async function saveTab(id: string): Promise<boolean> {
   const tab = tabs().tabs.find((t) => t.id === id);
   if (!tab) return false;
   const result = await guard("Could not save", async () => {
-    const doc = tab.draft;
+    // Values remembered for names removed from the URL are dropped on save.
+    const doc = tab.draft.kind === "http" ? { ...tab.draft, pathParams: visiblePathParams(tab.draft.url, tab.draft.pathParams) } : tab.draft;
     if (doc.kind === "runner") return true;
     if (doc.kind === "collection") {
       await ws().saveCollectionDoc(tab.root!, doc);
@@ -223,7 +225,7 @@ export async function saveTab(id: string): Promise<boolean> {
     }
     if (tab.path && tab.root) {
       await collectionRepo.saveRequest(tab.path, doc);
-      tabs().markSaved(id, tab.root, tab.path);
+      tabs().markSaved(id, tab.root, tab.path, doc);
       await ws().reload(tab.root);
       return true;
     }

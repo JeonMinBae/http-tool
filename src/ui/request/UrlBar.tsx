@@ -3,6 +3,7 @@ import { parseCurl } from "../../core/curl/import";
 import { executeRequest } from "../../core/execute";
 import { HTTP_METHODS, type HttpMethod, type HttpRequestDoc } from "../../core/model";
 import { syncParamsFromUrl } from "../../core/params";
+import { syncPathParams } from "../../core/pathParams";
 import { useResponses } from "../../state/responses";
 import { useStreams } from "../../state/streams";
 import { useTabs, type Tab } from "../../state/tabs";
@@ -60,7 +61,7 @@ export function UrlBar({ tab }: { tab: Tab<HttpRequestDoc> }) {
             placeholder="Enter URL or paste text"
             onEnter={send}
             onPaste={onPaste}
-            onChange={(url) => update<HttpRequestDoc>(tab.id, (x) => ({ ...x, url, params: syncParamsFromUrl(url, x.params) }))}
+            onChange={(url) => update<HttpRequestDoc>(tab.id, (x) => ({ ...x, url, params: syncParamsFromUrl(url, x.params), pathParams: syncPathParams(url, x.pathParams) }))}
           />
         </div>
       </div>
