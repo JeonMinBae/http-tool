@@ -192,3 +192,16 @@ describe("worker lockdown", () => {
     expect(received).toEqual([{ type: "run" }]);
   });
 });
+
+describe("list variables", () => {
+  it("reads and writes list items with 'list:key'", async () => {
+    const out = await runInline(
+      `pm.environment.set('tool:B','ww'); pm.collectionVariables.unset('c:x');
+       console.log(pm.variables.get('tool:A'), pm.variables.replaceIn('{{tool:B}}'), JSON.stringify(pm.environment.toObject()));`,
+      { scopes: s({ environment: { "tool:": "", "tool:A": "qq" }, collection: { "c:": "", "c:x": "1" } }) },
+    );
+    expect(out.scopes.environment).toEqual({ "tool:": "", "tool:A": "qq", "tool:B": "ww" });
+    expect(out.scopes.collection).toEqual({ "c:": "" });
+    expect(out.logs[0].args).toEqual(["qq", "ww", '{"tool:A":"qq","tool:B":"ww"}']);
+  });
+});

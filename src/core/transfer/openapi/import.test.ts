@@ -42,12 +42,13 @@ describe("importOpenApi", () => {
     const plan = importOpenApi(SPEC);
     expect(plan.collection.name).toBe("Pets");
     expect(plan.collection.variables.find((v) => v.key === "baseUrl")?.value).toBe("https://prod.api.test/v1");
-    expect(plan.collection.variables.find((v) => v.key === "petId")?.value).toBe("42");
+    expect(plan.collection.variables.find((v) => v.key === "petId")).toBeUndefined();
     const folder = plan.items[0] as TransferFolder;
     expect(folder.name).toBe("pets");
     const [get, put] = folder.items as HttpRequestDoc[];
     expect(get.name).toBe("getPet");
-    expect(get.url).toBe("{{baseUrl}}/pets/{{petId}}");
+    expect(get.url).toBe("{{baseUrl}}/pets/{petId}");
+    expect(get.pathParams).toEqual([{ key: "petId", value: "42", description: "" }]);
     expect(get.params).toEqual([{ key: "verbose", value: "true", enabled: false }]);
     expect(get.headers).toEqual([{ key: "X-Trace", value: "abc", enabled: true }]);
     expect(put.name).toBe("Update pet");
@@ -150,6 +151,6 @@ describe("importOpenApi", () => {
       paths: { "@evil.test/{token}": { get: { security: [{ b: [] }] } } },
     });
     expect(plan.collection.variables.find((v) => v.key === "token")?.secret).toBe(true);
-    expect((plan.items[0] as HttpRequestDoc).url).toBe("{{baseUrl}}/@evil.test/{{token}}");
+    expect((plan.items[0] as HttpRequestDoc).url).toBe("{{baseUrl}}/@evil.test/{token}");
   });
 });

@@ -1,5 +1,6 @@
 import { emptyRequest, HTTP_METHODS, type Body, type FormField, type HttpMethod, type HttpRequestDoc, type KeyValue } from "../model";
 import { syncParamsFromUrl } from "../params";
+import { syncPathParams } from "../pathParams";
 import { tokenize } from "./tokenize";
 
 export interface CurlImport {
@@ -173,6 +174,7 @@ export function parseCurl(text: string): CurlImport {
 
   req.url = url;
   req.params = syncParamsFromUrl(url, []);
+  req.pathParams = syncPathParams(url, []);
   req.headers = headers;
   req.cookies = cookies;
   req.body = body;

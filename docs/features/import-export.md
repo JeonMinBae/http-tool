@@ -17,6 +17,7 @@ cURL 변환은 별도 기능이다 → [cURL 변환](curl.md).
 - 내보내는 내용은 디스크에 저장된 상태다. 열린 탭의 저장하지 않은 변경은 들어가지 않는다.
 - **HTTP Tool JSON**은 요청, WebSocket, 폴더, 컬렉션(auth, scripts, variables)을 그대로 담는다. 환경과 전역 변수는 담지 않는다.
 - **Include secrets**(기본 꺼짐)를 끄면 비밀 변수 값과 인증 정보(Bearer token, Basic password, API Key 값, OAuth 2.0 client secret)를 비운다. 값이 `{{변수}}` 참조면 그대로 둔다. 이 옵션은 HTTP Tool JSON에만 있다. Headers·Cookies에 직접 넣은 값(이름에 auth·token·key·secret·password·session·cookie가 들어간 헤더, 모든 쿠키)은 비우지 않고 대화상자에 경고로 알려준다.
+- 목록형 변수도 같은 규칙이다. 비밀 목록은 모든 항목 값을 비운다.
 - binary 바디와 form-data 파일 필드는 파일 경로만 담고 파일 내용은 담지 않는다.
 
 ### OpenAPI로 내보내기
@@ -26,7 +27,8 @@ cURL 변환은 별도 기능이다 → [cURL 변환](curl.md).
 | 요청 | OpenAPI |
 | --- | --- |
 | URL 앞부분 `{{baseUrl}}` 또는 `https://host` | `servers`. 컬렉션 변수에 일반 값이 있으면 그 값, 없으면 `{baseUrl}` 서버 변수 |
-| 경로의 `{{id}}` | `{id}` path 파라미터 |
+| 경로의 `{id}` ([경로 파라미터](request.md#경로-파라미터-path-params)) | `{id}` path 파라미터. 값은 `example`, 설명은 `description`으로 나간다 (비어 있으면 생략) |
+| 경로의 `{{id}}` | `{id}` path 파라미터 (example 없음) |
 | Params · Headers · Cookies | query · header · cookie 파라미터 (사용 중이면 `required: true`). Content-Type·Authorization 헤더는 제외 |
 | Body | `requestBody`. JSON 바디는 example과 추론한 schema |
 | 폴더 | 가장 가까운 폴더 이름이 tag |
@@ -52,7 +54,7 @@ cURL 변환은 별도 기능이다 → [cURL 변환](curl.md).
 | --- | --- |
 | `info.title` | 컬렉션 이름 |
 | `servers[0].url` (서버 변수는 기본값으로) | 컬렉션 변수 `baseUrl`. 상대 경로(`/api/v3`)면 전체 주소로 고치라고 경고 |
-| 경로 `/users/{id}` | URL `{{baseUrl}}/users/{{id}}`, `id`는 컬렉션 변수 (example 값) |
+| 경로 `/users/{id}` · `in: path` 파라미터 | URL `{{baseUrl}}/users/{id}`, Params 탭의 경로 파라미터 `id` (값은 example, 설명은 `description`). 경로에 없는 이름은 버리고, 더 이상 컬렉션 변수는 만들지 않는다 |
 | operation의 첫 번째 tag | 폴더 (tag 없으면 컬렉션 바로 아래) |
 | `summary` → `operationId` → `METHOD 경로` | 요청 이름 |
 | query · header · cookie 파라미터 | Params · Headers · Cookies (required면 사용, 아니면 꺼둠) |

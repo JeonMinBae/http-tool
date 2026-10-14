@@ -8,13 +8,16 @@ import {
   type FormField,
   type HttpMethod,
   type HttpRequestDoc,
+  isListVar,
   type KeyValue,
+  type PathParam,
   type RawLanguage,
   type RequestSettings,
   type Scripts,
   type Variable,
   type WebSocketDoc,
 } from "./model";
+import { visiblePathParams } from "./pathParams";
 
 export type Obj = Record<string, unknown>;
 
@@ -118,7 +121,19 @@ function method(v: unknown): HttpMethod {
 
 export function variable(v: unknown): Variable {
   const o = isObj(v) ? v : {};
-  return { key: str(o.key), value: str(o.value), enabled: bool(o.enabled, true), secret: bool(o.secret, false) };
+  const base = { key: str(o.key), enabled: bool(o.enabled, true), secret: bool(o.secret, false) };
+  return o.type === "list" ? { ...base, value: "", type: "list", items: arr(o.items).map(keyValue) } : { ...base, value: str(o.value) };
+}
+
+/** On-disk shape: text variables keep the old fields; lists drop the unused value. */
+export const storedVariable = (v: Variable) =>
+  isListVar(v)
+    ? { key: v.key, type: "list", enabled: v.enabled, secret: v.secret, items: v.items }
+    : { key: v.key, value: v.value, enabled: v.enabled, secret: v.secret };
+
+function pathParam(v: unknown): PathParam {
+  const o = isObj(v) ? v : {};
+  return { key: str(o.key), value: str(o.value), description: str(o.description) };
 }
 
 /** Tolerant conversion of an already-parsed object (kind is not checked). */
@@ -131,6 +146,7 @@ export function toRequest(v: unknown): HttpRequestDoc {
     method: method(o.method),
     url: str(o.url),
     params: arr(o.params).map(keyValue),
+    pathParams: arr(o.pathParams).map(pathParam),
     headers: arr(o.headers).map(keyValue),
     cookies: arr(o.cookies).map(keyValue),
     body: body(o.body),
@@ -192,7 +208,9 @@ export function fileKind(text: string): string | undefined {
   return isObj(data) && typeof data.kind === "string" ? data.kind : undefined;
 }
 
-export const serializeRequest = (doc: HttpRequestDoc): string => stringify(doc, STRINGIFY_OPTIONS);
+/** Rows remembered for names removed from the URL are not saved. */
+export const serializeRequest = (doc: HttpRequestDoc): string =>
+  stringify({ ...doc, pathParams: visiblePathParams(doc.url, doc.pathParams) }, STRINGIFY_OPTIONS);
 
 export const serializeWebSocket = (doc: WebSocketDoc): string => stringify(doc, STRINGIFY_OPTIONS);
 
@@ -200,6 +218,8 @@ export const serializeFolder = (doc: FolderDoc): string => stringify(doc, STRING
 
 /** Secret variable values are never written to the collection file. */
 export function serializeCollection(doc: CollectionDoc): string {
-  const variables = doc.variables.map((v) => (v.secret ? { ...v, value: "" } : v));
+  const variables = doc.variables
+    .map((v) => (!v.secret ? v : isListVar(v) ? { ...v, items: v.items.map((i) => ({ ...i, value: "" })) } : { ...v, value: "" }))
+    .map(storedVariable);
   return stringify({ ...doc, variables }, STRINGIFY_OPTIONS);
 }

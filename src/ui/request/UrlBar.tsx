@@ -1,8 +1,9 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { parseCurl } from "../../core/curl/import";
 import { executeRequest } from "../../core/execute";
 import { HTTP_METHODS, type HttpMethod, type HttpRequestDoc } from "../../core/model";
 import { syncParamsFromUrl } from "../../core/params";
+import { syncPathParams } from "../../core/pathParams";
 import { useResponses } from "../../state/responses";
 import { useStreams } from "../../state/streams";
 import { useTabs, type Tab } from "../../state/tabs";
@@ -12,6 +13,7 @@ import { alertError } from "../common/dialogs";
 import { Icon } from "../common/icons";
 import { openCurlExport } from "../curl/CurlDialogs";
 import { methodColor } from "../common/methodColor";
+import { pathParamHighlight } from "../editor/pathParamHighlight";
 import { CodeEditor } from "../editor/CodeEditor";
 import { useVarExtension } from "../editor/useScopes";
 
@@ -22,6 +24,9 @@ export function UrlBar({ tab }: { tab: Tab<HttpRequestDoc> }) {
   const send = useCallback(() => void executeRequest(tab.id), [tab.id]);
   const d = tab.draft;
   const varExt = useVarExtension(tab.root);
+  const pathKey = JSON.stringify(d.pathParams);
+  const pathExt = useMemo(() => pathParamHighlight(d.pathParams), [pathKey]);
+  const urlExt = useMemo(() => [...varExt, ...pathExt], [varExt, pathExt]);
   const onPaste = useCallback(
     (text: string) => {
       if (!/^\s*curl(\.exe)?\s/i.test(text)) return false;
@@ -55,12 +60,12 @@ export function UrlBar({ tab }: { tab: Tab<HttpRequestDoc> }) {
         <div className="min-w-0 flex-1">
           <CodeEditor
             singleLine
-            extensions={varExt}
+            extensions={urlExt}
             value={d.url}
             placeholder="Enter URL or paste text"
             onEnter={send}
             onPaste={onPaste}
-            onChange={(url) => update<HttpRequestDoc>(tab.id, (x) => ({ ...x, url, params: syncParamsFromUrl(url, x.params) }))}
+            onChange={(url) => update<HttpRequestDoc>(tab.id, (x) => ({ ...x, url, params: syncParamsFromUrl(url, x.params), pathParams: syncPathParams(url, x.pathParams) }))}
           />
         </div>
       </div>

@@ -102,6 +102,14 @@ describe("oauth2 auth yaml", () => {
   });
 });
 
+describe("request path params", () => {
+  it("saves only path params present in the url and reads files without the field", () => {
+    const doc = { ...emptyRequest("r"), url: "/u/{id}", pathParams: [{ key: "id", value: "7", description: "" }, { key: "old", value: "x", description: "" }] };
+    expect(parseRequest(serializeRequest(doc)).pathParams).toEqual([{ key: "id", value: "7", description: "" }]);
+    expect(parseRequest("kind: http\nname: r\nurl: /x\n").pathParams).toEqual([]);
+  });
+});
+
 describe("websocket yaml", () => {
   it("round-trips a websocket document", async () => {
     const { parseWebSocket, serializeWebSocket, fileKind } = await import("./yaml");
@@ -129,4 +137,21 @@ describe("object parsers", () => {
   it("toWebSocket ignores non-object input", () => {
     expect(toWebSocket("nope").name).toBe("WebSocket");
   });
+});
+
+it("writes list variables in the documented shape and blanks secret list values", () => {
+  const col = {
+    ...emptyCollection("c"),
+    variables: [
+      { key: "tool", value: "", enabled: true, secret: true, type: "list" as const, items: [{ key: "A", value: "qq", enabled: true }] },
+      { key: "t", value: "1", enabled: true, secret: false },
+    ],
+  };
+  const text = serializeCollection(col);
+  expect(text).toContain("type: list");
+  expect(text).not.toContain("qq");
+  expect(parseCollection(text).variables).toEqual([
+    { key: "tool", value: "", enabled: true, secret: true, type: "list", items: [{ key: "A", value: "", enabled: true }] },
+    { key: "t", value: "1", enabled: true, secret: false },
+  ]);
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildScopes, interpolate, listVars, resolveVar, varSource, type VarScopes } from "./variables";
+import { buildScopes, interpolate, resolveVar, setScopeVar, toggleVarType, varSource, visibleVars, type VarScopes } from "./variables";
 
 const s = (p: Partial<VarScopes>): VarScopes => ({ local: {}, environment: {}, collection: {}, global: {}, ...p });
 const v = (key: string, value: string, enabled = true) => ({ key, value, enabled, secret: false });
@@ -47,13 +47,54 @@ describe("buildScopes", () => {
   });
 });
 
-describe("listVars", () => {
+describe("visibleVars", () => {
   it("lists each name once from its highest-precedence scope, sorted by name", () => {
     const scopes = buildScopes({ globals: [v("host", "g")], environment: [v("host", "e"), v("token", "t")], collection: [v("a", "c")] });
-    expect(listVars(scopes)).toEqual([
+    expect(visibleVars(scopes)).toEqual([
       { name: "a", scope: "collection", value: "c" },
       { name: "host", scope: "environment", value: "e" },
       { name: "token", scope: "environment", value: "t" },
     ]);
   });
+});
+const list = (key: string, items: [string, string, boolean?][], enabled = true) =>
+  ({ key, value: "", enabled, secret: false, type: "list" as const, items: items.map(([k, v, e = true]) => ({ key: k, value: v, enabled: e })) });
+
+describe("list variables", () => {
+  it("resolves {{list:key}} separately from a plain variable with the same name", () => {
+    const scopes = buildScopes({ collection: [v("tool", "plain"), list("tool", [["A", "qq"], ["B", "ww"]])] });
+    expect(interpolate("{{tool}} {{tool:A}} {{tool:B}}", scopes).value).toBe("plain qq ww");
+  });
+
+  it("a higher scope list replaces the whole lower scope list", () => {
+    const scopes = buildScopes({ environment: [list("tool", [["A", "env"]])], collection: [list("tool", [["A", "c"], ["B", "c"]])] });
+    expect(interpolate("{{tool:A}}|{{tool:B}}", scopes)).toEqual({ value: "env|{{tool:B}}", unresolved: ["tool:B"] });
+  });
+
+  it("treats disabled items, empty keys and plain names with ':' as unresolved", () => {
+    const scopes = buildScopes({ globals: [list("t", [["off", "x", false]]), v("a:b", "1")] });
+    expect(interpolate("{{t:off}}{{t:}}{{a:b}}", scopes).unresolved).toEqual(["t:off", "t:", "a:b"]);
+  });
+
+  it("resolves nested variables inside item values and keys containing ':'", () => {
+    const scopes = buildScopes({ globals: [v("h", "x"), list("t", [["a:b", "{{h}}/1"]])] });
+    expect(interpolate("{{t:a:b}}", scopes).value).toBe("x/1");
+  });
+
+  it("visibleVars hides markers and overridden list items", () => {
+    const scopes = buildScopes({ environment: [list("t", [["A", "e"]])], collection: [list("t", [["B", "c"]])] });
+    expect(visibleVars(scopes)).toEqual([{ name: "t:A", scope: "environment", value: "e" }]);
+  });
+
+  it("setScopeVar creates the list marker for item writes", () => {
+    const rec: Record<string, string> = {};
+    setScopeVar(rec, "t:A", "1");
+    expect(varSource("t:A", s({ local: rec }))).toBe("local");
+  });
+});
+
+it("toggleVarType switches between text and list", () => {
+  const list = toggleVarType({ key: "t", value: "x", enabled: true, secret: true });
+  expect(list).toEqual({ key: "t", value: "", enabled: true, secret: true, type: "list", items: [] });
+  expect(toggleVarType(list)).toEqual({ key: "t", value: "", enabled: true, secret: true });
 });

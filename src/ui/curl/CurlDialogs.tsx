@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { toCurl, type Shell } from "../../core/curl/export";
 import { parseCurl } from "../../core/curl/import";
 import { prepareForTab } from "../../core/execute";
+import { unresolvedLabel } from "../../core/prepare";
 import type { HttpRequestDoc } from "../../core/model";
 import type { Tab } from "../../state/tabs";
 import { toast } from "../../state/toasts";
@@ -95,7 +96,7 @@ function ExportBody({ tab, close }: { tab: Tab<HttpRequestDoc>; close: () => voi
       ) : (
         <>
           {result.unresolved && result.unresolved.length > 0 && (
-            <p className="mb-2 text-[12px] text-warn">Unresolved variables: {result.unresolved.map((u) => `{{${u}}}`).join(", ")}</p>
+            <p className="mb-2 text-[12px] text-warn">Unresolved variables: {result.unresolved.map(unresolvedLabel).join(", ")}</p>
           )}
           <div className="h-72 rounded border border-line">
             <CodeEditor readOnly lineWrapping value={result.text ?? ""} />

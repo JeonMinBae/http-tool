@@ -35,3 +35,22 @@ describe("varCompletionSource", () => {
     expect(r?.options[0].apply).toBe("{{host}}");
   });
 });
+
+describe("list variables", () => {
+  const list = { key: "tool", value: "", enabled: true, secret: true, type: "list" as const, items: [{ key: "A", value: "qq", enabled: true }, { key: "B", value: "ww", enabled: true }] };
+  const withList = buildScopes({ environment: [v("tool", "plain"), list] });
+  const at = (doc: string) => varCompletionSource(withList, new Set(["tool:A", "tool:B"]))(new CompletionContext(EditorState.create({ doc }), doc.length, false));
+
+  it("lists plain names and list items after {{, without the list marker", () => {
+    expect(at("{{")?.options.map((o) => o.label)).toEqual(["tool", "tool:A", "tool:B"]);
+  });
+
+  it("narrows to item keys after `list:` and inserts only the key", () => {
+    const r = at("{{tool:");
+    expect(r?.from).toBe("{{tool:".length);
+    expect(r?.options.map((o) => [o.label, o.apply, o.detail])).toEqual([
+      ["A", "A}}", "environment · ••••••"],
+      ["B", "B}}", "environment · ••••••"],
+    ]);
+  });
+});

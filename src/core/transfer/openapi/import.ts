@@ -1,6 +1,7 @@
 import lodash from "lodash";
-import { HTTP_METHODS, emptyCollection, emptyFolder, emptyRequest, type Auth, type Body, type HttpRequestDoc, type KeyValue, type Variable } from "../../model";
+import { HTTP_METHODS, emptyCollection, emptyFolder, emptyRequest, type Auth, type Body, type HttpRequestDoc, type KeyValue, type PathParam, type Variable } from "../../model";
 import { syncUrlFromParams } from "../../params";
+import { visiblePathParams } from "../../pathParams";
 import { RAW_CONTENT_TYPE } from "../../prepare";
 import { arr, isObj, str, type Obj } from "../../yaml";
 import type { ImportPlan, TransferFolder, TransferNode } from "../model";
@@ -94,9 +95,10 @@ function buildRequest(path: string, method: string, op: Obj, pathParams: unknown
   const params: KeyValue[] = [];
   const headers: KeyValue[] = [];
   const cookies: KeyValue[] = [];
+  const collected: PathParam[] = [];
   for (const p of byKey.values()) {
     const kv = { key: str(p.name), value: toText(exampleOf(p, ctx.r)), enabled: p.required === true };
-    if (p.in === "path") addVar(ctx.vars, kv.key, kv.value);
+    if (p.in === "path") collected.push({ key: kv.key, value: kv.value, description: str(p.description) });
     else if (p.in === "query") params.push(kv);
     else if (p.in === "header") headers.push(kv);
     else if (p.in === "cookie") cookies.push(kv);
@@ -107,12 +109,14 @@ function buildRequest(path: string, method: string, op: Obj, pathParams: unknown
   const opAuth = op.security === undefined ? null : authFromSecurity(op.security, ctx.schemes, ctx.r, ctx.vars, ctx.warnings);
   // A key like "@evil.example/x" would otherwise move the request to another host.
   const rooted = path.startsWith("/") ? path : `/${path}`;
-  const url = `{{baseUrl}}${rooted.replace(/\{([^}]+)\}/g, "{{$1}}")}`;
+  const url = `{{baseUrl}}${rooted}`;
   return {
     ...emptyRequest(str(op.summary) || str(op.operationId) || label),
     method: method.toUpperCase() as HttpRequestDoc["method"],
     url: syncUrlFromParams(url, params),
     params,
+    // URL order; names declared but missing from the path are dropped.
+    pathParams: visiblePathParams(url, collected),
     headers,
     cookies,
     body,

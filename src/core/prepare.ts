@@ -3,11 +3,15 @@ import { applyAuth, resolveAuth, type Chain } from "./auth";
 import type { LoadedCollection, TreeNode } from "./collectionRepo";
 import { emptyCollection, type Body, type FolderDoc, type GlobalSettings, type HttpRequestDoc, type KeyValue, type RequestSettings } from "./model";
 import { samePath } from "./path";
+import { applyPathParams } from "./pathParams";
 import { interpolate, type VarScopes } from "./variables";
 
 export type { Chain } from "./auth";
 
 export const RAW_CONTENT_TYPE = { json: "application/json", text: "text/plain", xml: "application/xml", html: "text/html" } as const;
+
+/** Unresolved entries are variable names, or `{name}` for an empty path param (variable names never contain braces). */
+export const unresolvedLabel = (u: string) => (u.startsWith("{") ? u : `{{${u}}}`);
 
 export class PrepareError extends Error {}
 
@@ -100,7 +104,10 @@ export function prepareRequest(chain: Chain, scopes: VarScopes, settings: Global
   const cookie = enabled(req.cookies).map((c) => `${t(c.key)}=${t(c.value)}`).join("; ");
   if (cookie) headers.push(["Cookie", cookie]);
 
-  const authed = applyAuth(resolveAuth(chain), { url: withScheme(t(req.url)), headers }, t, opts.oauthToken);
+  // Encoded values contain no `{{`, so interpolating the URL afterwards is safe.
+  const path = applyPathParams(req.url, req.pathParams, t);
+  path.empty.forEach((n) => unresolved.add(`{${n}}`));
+  const authed = applyAuth(resolveAuth(chain), { url: withScheme(t(path.url)), headers }, t, opts.oauthToken);
   const body = toPreparedBody(req.body, t);
   if (req.body.type === "raw" && !hasHeader(authed.headers, "content-type"))
     authed.headers.push(["Content-Type", RAW_CONTENT_TYPE[req.body.language]]);

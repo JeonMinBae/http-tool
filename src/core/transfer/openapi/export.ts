@@ -1,6 +1,7 @@
 import lodash from "lodash";
 import { stringify } from "yaml";
 import type { Auth, CollectionDoc, FolderDoc, HttpRequestDoc, KeyValue } from "../../model";
+import { visiblePathParams } from "../../pathParams";
 import { RAW_CONTENT_TYPE } from "../../prepare";
 import type { Obj } from "../../yaml";
 import type { TransferNode } from "../model";
@@ -182,7 +183,18 @@ function scrubExample(v: unknown, scrub: Scrub): unknown {
 
 function operationFor(n: HttpRequestDoc, oaPath: string, tag: string | null, warnings: string[]): Obj {
   const scrub: Scrub = { hit: false };
-  const pathParams = [...oaPath.matchAll(/\{([^}]+)\}/g)].map((m) => ({ name: m[1], in: "path", required: true, schema: { type: "string" } }));
+  const own = new Map(visiblePathParams(n.url, n.pathParams).map((p) => [p.key, p]));
+  const pathParams = [...oaPath.matchAll(/{([^}]+)}/g)].map((m) => {
+    const p = own.get(m[1]);
+    return {
+      name: m[1],
+      in: "path",
+      required: true,
+      schema: { type: "string" },
+      ...(p?.description && { description: p.description }),
+      ...(p?.value && { example: p.value }),
+    };
+  });
   const parameters = [
     ...pathParams,
     ...n.params.filter((p) => p.key).map((p) => param(p, "query", scrub)),

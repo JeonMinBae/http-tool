@@ -31,7 +31,8 @@ interface TabsState {
   activate(id: string): void;
   close(id: string): void;
   update<D extends TabDoc>(id: string, fn: (draft: D) => D): void;
-  markSaved(id: string, root: string, path: string, doc?: TabDoc): void;
+  /** `from` is the draft the save started with; if the draft changed since, it is kept (and stays dirty). */
+  markSaved(id: string, root: string, path: string, doc?: TabDoc, from?: TabDoc): void;
   /** Re-points tabs after a rename/move of `from` (file or folder) to `to`. */
   renamePath(from: string, to: string): void;
   /** Handles deletion of `path`: clean tabs close, dirty request tabs become unsaved. */
@@ -76,12 +77,13 @@ export const useTabs = create<TabsState>((set, get) => ({
     set({ tabs: get().tabs.map((t) => (t.id === id ? { ...t, draft: fn(t.draft as never) } : t)) });
   },
 
-  markSaved(id, root, path, doc) {
+  markSaved(id, root, path, doc, from) {
     set({
       tabs: get().tabs.map((t) => {
         if (t.id !== id) return t;
         const saved = structuredClone(doc ?? t.draft);
-        return { ...t, root, path, draft: doc ? structuredClone(doc) : t.draft, saved, savedAt: Date.now() };
+        const editedSince = from !== undefined && t.draft !== from;
+        return { ...t, root, path, draft: doc && !editedSince ? structuredClone(doc) : t.draft, saved, savedAt: Date.now() };
       }),
     });
   },

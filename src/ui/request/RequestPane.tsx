@@ -1,3 +1,4 @@
+import { unresolvedLabel } from "../../core/prepare";
 import type { CollectionDoc, FolderDoc, HttpRequestDoc, WebSocketDoc } from "../../core/model";
 import { WsEditor } from "../ws/WsEditor";
 import { ContainerSettings } from "../collection/ContainerSettings";
@@ -14,7 +15,7 @@ function UnresolvedWarning({ tabId }: { tabId: string }) {
   if (!unresolved?.length) return null;
   return (
     <div className="border-b border-line bg-warn/10 px-3 py-1 text-[12px] text-warn">
-      Unresolved variables: {unresolved.map((u) => `{{${u}}}`).join(", ")}
+      Unresolved variables: {unresolved.map(unresolvedLabel).join(", ")}
     </div>
   );
 }

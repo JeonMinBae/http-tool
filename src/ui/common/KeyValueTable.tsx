@@ -1,8 +1,9 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { KeyValue } from "../../core/model";
 import type { Extension } from "@codemirror/state";
 import { Icon } from "./icons";
 import { CodeEditor } from "../editor/CodeEditor";
+import { VarInput } from "../editor/VarInput";
 
 export interface KeyValueTableProps<T extends KeyValue> {
   rows: T[];
@@ -18,7 +19,7 @@ export interface KeyValueTableProps<T extends KeyValue> {
   extraHeader?: string;
   allowBulk?: boolean;
   readOnly?: boolean;
-  /** Editor extensions for key/value cells ({{variable}} highlight + completion); plain inputs when omitted. */
+  /** Editor extensions for key/value cells ({{variable}} highlight + completion). When omitted, keys are plain inputs and values use VarInput. */
   extensions?: Extension[];
 }
 
@@ -64,8 +65,12 @@ export function KeyValueTable<T extends KeyValue>({
   extensions,
 }: KeyValueTableProps<T>) {
   const [bulk, setBulk] = useState<string | null>(null);
+  useEffect(() => {
+    if (!allowBulk) setBulk(null);
+  }, [allowBulk]);
 
-  if (bulk !== null) {
+  // allowBulk can turn off while the editor is open (e.g. secrets hidden again).
+  if (bulk !== null && allowBulk) {
     return (
       <div>
         <div className="mb-1 flex justify-end">
@@ -138,7 +143,17 @@ export function KeyValueTable<T extends KeyValue>({
                   {renderValue && !placeholder ? (
                     renderValue(row, patch)
                   ) : (
-                    <KeyValueCell value={row.value} readOnly={readOnly} placeholder={placeholder ? valuePlaceholder : ""} extensions={extensions} onChange={(value) => patch({ value } as Partial<T>)} />
+                    extensions ? (
+                      <KeyValueCell value={row.value} readOnly={readOnly} placeholder={placeholder ? valuePlaceholder : ""} extensions={extensions} onChange={(value) => patch({ value } as Partial<T>)} />
+                    ) : (
+                      <VarInput
+                        className="min-h-7 w-full bg-transparent focus-within:bg-elevated mono"
+                        value={row.value}
+                        readOnly={readOnly}
+                        placeholder={placeholder ? valuePlaceholder : ""}
+                        onChange={(v) => patch({ value: v } as Partial<T>)}
+                      />
+                    )
                   )}
                 </td>
                 {renderExtra && <td className="border border-line">{renderExtra(row, patch)}</td>}

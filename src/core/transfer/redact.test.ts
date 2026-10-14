@@ -42,3 +42,21 @@ describe("redact", () => {
     ]);
   });
 });
+
+it("blanks literal values of secret lists and keeps {{refs}}", () => {
+  const v = {
+    key: "l",
+    value: "",
+    enabled: true,
+    secret: true,
+    type: "list" as const,
+    items: [
+      { key: "a", value: "x", enabled: true },
+      { key: "b", value: "{{r}}", enabled: true },
+    ],
+  };
+  expect(redactVariables([v])[0].items).toEqual([
+    { key: "a", value: "", enabled: true },
+    { key: "b", value: "{{r}}", enabled: true },
+  ]);
+});

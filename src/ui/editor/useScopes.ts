@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { buildScopes } from "../../core/variables";
+import { buildScopes, secretNames } from "../../core/variables";
 import { samePath } from "../../core/path";
 import { useVariables } from "../../state/variables";
 import { useWorkspace } from "../../state/workspace";
@@ -13,7 +13,7 @@ export function useScopes(root: string | null) {
   const collection = useWorkspace((s) => (root ? s.collections.find((c) => samePath(c.root, root))?.doc.variables : undefined));
   return useMemo(() => {
     const scopes = buildScopes({ globals, environment: env?.variables, collection });
-    const secrets = new Set([...globals, ...(env?.variables ?? []), ...(collection ?? [])].filter((v) => v.secret).map((v) => v.key));
+    const secrets = new Set(secretNames([...globals, ...(env?.variables ?? []), ...(collection ?? [])]));
     return { scopes, secrets };
   }, [globals, env, collection]);
 }

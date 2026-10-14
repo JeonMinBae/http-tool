@@ -39,3 +39,12 @@ describe("search", () => {
     expect(search("   ", index)).toEqual([]);
   });
 });
+
+it("indexes list items as list:key and hides secret values", () => {
+  const list = { key: "tool", value: "", enabled: true, secret: false, type: "list" as const, items: [{ key: "A", value: "qq", enabled: true }] };
+  const index = buildIndex({ collections: [], environments: [], globals: [list] });
+  expect(search("tool:a", index)[0]).toMatchObject({ label: "tool:A", value: "qq" });
+  const hidden = buildIndex({ collections: [], environments: [], globals: [{ ...list, secret: true }] });
+  expect(search("qq", hidden)).toEqual([]);
+  expect(search("tool:a", hidden)[0]).toMatchObject({ value: "", secret: true });
+});

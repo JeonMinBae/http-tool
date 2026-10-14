@@ -1,7 +1,7 @@
 import type { KeyValue } from "./model";
 
 /** URL may contain {{vars}}, so query handling is string based and keeps text as typed. */
-function splitUrl(url: string): { base: string; query: string | null; hash: string } {
+export function splitUrl(url: string): { base: string; query: string | null; hash: string } {
   const hashAt = url.indexOf("#");
   const hash = hashAt >= 0 ? url.slice(hashAt) : "";
   const rest = hashAt >= 0 ? url.slice(0, hashAt) : url;

@@ -1,5 +1,5 @@
 import type { LoadedCollection } from "./collectionRepo";
-import type { Environment, Variable } from "./model";
+import { isListVar, type Environment, type Variable } from "./model";
 
 export type SearchHit = { label: string; detail: string; value: string; secret: boolean; target: VariableTarget; score: number };
 
@@ -24,6 +24,15 @@ export function buildIndex(input: { collections: LoadedCollection[]; globals: Va
   const addVars = (vars: Variable[], detail: string, target: VariableTarget) => {
     for (const v of vars) {
       if (!v.key) continue;
+      if (isListVar(v)) {
+        // A list has no value of its own; only its items are indexed.
+        for (const i of v.items) {
+          if (!i.key) continue;
+          const label = `${v.key}:${i.key}`;
+          entries.push({ hit: { label, detail, value: v.secret ? "" : i.value, secret: v.secret, target }, name: label.toLowerCase(), rest: v.secret ? "" : i.value.toLowerCase() });
+        }
+        continue;
+      }
       // Secret values are never searchable.
       entries.push({ hit: { label: v.key, detail, value: v.secret ? "" : v.value, secret: v.secret, target }, name: v.key.toLowerCase(), rest: v.secret ? "" : v.value.toLowerCase() });
     }
