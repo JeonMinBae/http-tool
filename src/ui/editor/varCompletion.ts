@@ -46,5 +46,8 @@ export function varCompletionSource(scopes: VarScopes, secrets: Set<string>) {
 
 /** `{{` completion on top of whatever language completions the editor already has. */
 export function varCompletion(scopes: VarScopes, secrets: Set<string>) {
-  return [autocompletion(), EditorState.languageData.of(() => [{ autocomplete: varCompletionSource(scopes, secrets) }])];
+  // languageDataAt must return the same function every time: CodeMirror matches results to sources by identity,
+  // so a fresh function per call drops every result and the completion stays pending forever.
+  const source = varCompletionSource(scopes, secrets);
+  return [autocompletion(), EditorState.languageData.of(() => [{ autocomplete: source }])];
 }

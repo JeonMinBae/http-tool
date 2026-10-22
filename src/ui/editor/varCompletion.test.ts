@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CompletionContext } from "@codemirror/autocomplete";
 import { EditorState } from "@codemirror/state";
 import { buildScopes } from "../../core/variables";
-import { varCompletionSource } from "./varCompletion";
+import { varCompletion, varCompletionSource } from "./varCompletion";
 
 const v = (key: string, value: string) => ({ key, value, enabled: true, secret: false });
 const scopes = buildScopes({ environment: [v("host", "api.dev")], globals: [v("token", "s3cr3t")] });
@@ -33,6 +33,16 @@ describe("varCompletionSource", () => {
     const r = run("Bearer ab", 9, true);
     expect(r?.from).toBe(7);
     expect(r?.options[0].apply).toBe("{{host}}");
+  });
+});
+
+describe("varCompletion", () => {
+  it("hands the editor the same source on every lookup", () => {
+    const state = EditorState.create({ doc: "{{", extensions: varCompletion(scopes, new Set()) });
+    const [a] = state.languageDataAt<unknown>("autocomplete", 2);
+    const [b] = state.languageDataAt<unknown>("autocomplete", 2);
+    expect(a).toBeTypeOf("function");
+    expect(a).toBe(b);
   });
 });
 
