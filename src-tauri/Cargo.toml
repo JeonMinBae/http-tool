@@ -1,6 +1,6 @@
 [package]
 name = "httptool"
-version = "0.1.0"
+version = "0.2.0"
 description = "Lightweight HTTP client"
 authors = ["mbjeon"]
 edition = "2024"
