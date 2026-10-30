@@ -26,10 +26,13 @@ export const isDirty = (t: Tab) => JSON.stringify(t.draft) !== JSON.stringify(t.
 
 interface TabsState {
   tabs: Tab[];
+  closedTabs: { tab: Tab; index: number }[];
   activeId: string | null;
   open(root: string | null, path: string | null, doc: TabDoc): string;
   activate(id: string): void;
-  close(id: string): void;
+  close(id: string, remember?: boolean): void;
+  reopenClosed(): void;
+  forgetClosed(root: string): void;
   update<D extends TabDoc>(id: string, fn: (draft: D) => D): void;
   /** `from` is the draft the save started with; if the draft changed since, it is kept (and stays dirty). */
   markSaved(id: string, root: string, path: string, doc?: TabDoc, from?: TabDoc): void;
@@ -47,6 +50,7 @@ const replacePrefix = (p: string, from: string, to: string) => (samePath(p, from
 
 export const useTabs = create<TabsState>((set, get) => ({
   tabs: [],
+  closedTabs: [],
   activeId: null,
 
   open(root, path, doc) {
@@ -64,13 +68,34 @@ export const useTabs = create<TabsState>((set, get) => ({
     set({ activeId: id });
   },
 
-  close(id) {
+  close(id, remember = true) {
     const tabs = get().tabs;
     const i = tabs.findIndex((t) => t.id === id);
     if (i < 0) return;
     const next = tabs.filter((t) => t.id !== id);
     const activeId = get().activeId === id ? (next[Math.min(i, next.length - 1)]?.id ?? null) : get().activeId;
-    set({ tabs: next, activeId });
+    const closedTabs = remember ? [...get().closedTabs, { tab: structuredClone(tabs[i]), index: i }].slice(-20) : get().closedTabs;
+    set({ tabs: next, activeId, closedTabs });
+  },
+
+  reopenClosed() {
+    const closedTabs = [...get().closedTabs];
+    const entry = closedTabs.pop();
+    if (!entry) return;
+    const existing = entry.tab.path ? get().tabs.find((t) => t.path && samePath(t.path, entry.tab.path!) && t.draft.kind === entry.tab.draft.kind) : undefined;
+    if (existing) {
+      set({ closedTabs, activeId: existing.id });
+      return;
+    }
+    // Execution state belongs to the old ID; reopening does not restart a request or connection.
+    const tab = { ...entry.tab, id: crypto.randomUUID() };
+    const tabs = [...get().tabs];
+    tabs.splice(Math.min(entry.index, tabs.length), 0, tab);
+    set({ tabs, closedTabs, activeId: tab.id });
+  },
+
+  forgetClosed(root) {
+    set({ closedTabs: get().closedTabs.filter(({ tab }) => !tab.root || !samePath(tab.root, root)) });
   },
 
   update(id, fn) {
@@ -91,6 +116,8 @@ export const useTabs = create<TabsState>((set, get) => ({
   renamePath(from, to) {
     set({
       tabs: get().tabs.map((t) => (t.path && affected(t.path, from) ? { ...t, path: replacePrefix(t.path, from, to) } : t)),
+      closedTabs: get().closedTabs.map((entry) => entry.tab.path && affected(entry.tab.path, from)
+        ? { ...entry, tab: { ...entry.tab, path: replacePrefix(entry.tab.path, from, to) } } : entry),
     });
   },
 
@@ -101,18 +128,18 @@ export const useTabs = create<TabsState>((set, get) => ({
       else if (t.draft.kind === "http" && isDirty(t)) tabs.push({ ...t, root: null, path: null });
     }
     const activeId = tabs.some((t) => t.id === get().activeId) ? get().activeId : (tabs[tabs.length - 1]?.id ?? null);
-    set({ tabs, activeId });
+    set({ tabs, activeId, closedTabs: get().closedTabs.filter(({ tab }) => !affected(tab.path, path)) });
   },
 
   refreshSaved(path, doc) {
+    const refresh = (t: Tab): Tab => t.path && samePath(t.path, path) && t.draft.kind === doc.kind
+      ? isDirty(t)
+        ? { ...t, saved: structuredClone(doc), draft: { ...t.draft, name: doc.name } }
+        : { ...t, saved: structuredClone(doc), draft: structuredClone(doc) }
+      : t;
     set({
-      tabs: get().tabs.map((t) =>
-        t.path && samePath(t.path, path) && t.draft.kind === doc.kind
-          ? isDirty(t)
-            ? { ...t, saved: structuredClone(doc), draft: { ...t.draft, name: doc.name } }
-            : { ...t, saved: structuredClone(doc), draft: structuredClone(doc) }
-          : t,
-      ),
+      tabs: get().tabs.map(refresh),
+      closedTabs: get().closedTabs.map((entry) => ({ ...entry, tab: refresh(entry.tab) })),
     });
   },
 

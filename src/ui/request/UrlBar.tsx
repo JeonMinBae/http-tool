@@ -57,7 +57,7 @@ export function UrlBar({ tab }: { tab: Tab<HttpRequestDoc> }) {
             </option>
           ))}
         </select>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1" data-request-url>
           <CodeEditor
             singleLine
             extensions={urlExt}
