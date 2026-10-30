@@ -63,6 +63,11 @@ export async function openCollectionFromDialog() {
   });
 }
 
+/** Refreshes the sidebar from disk without replacing open tab drafts. */
+export async function refreshCollections() {
+  await Promise.all(ws().collections.map(({ root }) => guard("Could not refresh collection", () => ws().reload(root))));
+}
+
 /** Asks for a destination and writes the text `render` builds for that path. Returns false on cancel or error. */
 export async function exportToFile(
   defaultPath: string,
@@ -117,7 +122,8 @@ export async function closeCollection(root: string) {
     ]);
     if (choice !== "close") return;
   }
-  open.forEach((t) => tabs().close(t.id));
+  open.forEach((t) => tabs().close(t.id, false));
+  tabs().forgetClosed(root);
   await ws().closeCollection(root);
 }
 

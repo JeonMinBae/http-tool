@@ -4,7 +4,7 @@ import { isDirty, useTabs } from "./tabs";
 
 const s = () => useTabs.getState();
 
-beforeEach(() => useTabs.setState({ tabs: [], activeId: null }));
+beforeEach(() => useTabs.setState({ tabs: [], closedTabs: [], activeId: null }));
 
 describe("tabs store", () => {
   it("re-activates an already open path instead of duplicating", () => {
@@ -44,6 +44,57 @@ describe("tabs store", () => {
     const b = s().open(null, null, emptyRequest("B"));
     s().close(b);
     expect(s().activeId).toBe(a);
+  });
+
+  it("reopens closed tabs in reverse order at their original position with unsaved edits", () => {
+    s().open(null, null, emptyRequest("A"));
+    const b = s().open(null, null, emptyRequest("B"));
+    const c = s().open(null, null, emptyRequest("C"));
+    s().update<HttpRequestDoc>(b, (d) => ({ ...d, url: "https://edited" }));
+    s().close(b);
+    s().close(c);
+    s().reopenClosed();
+    expect(s().active()?.draft.name).toBe("C");
+    s().reopenClosed();
+    expect(s().tabs.map((t) => t.draft.name)).toEqual(["A", "B", "C"]);
+    expect(s().active()?.draft).toMatchObject({ url: "https://edited" });
+    expect(s().activeId).not.toBe(b);
+    expect(isDirty(s().active()!)).toBe(true);
+    s().reopenClosed();
+    expect(s().tabs).toHaveLength(3);
+  });
+
+  it("activates an already reopened file without overwriting newer edits", () => {
+    const id = s().open("/c", "/c/a.yaml", emptyRequest("A"));
+    s().close(id);
+    const newer = s().open("/c", "/c/a.yaml", emptyRequest("Newer"));
+    s().reopenClosed();
+    expect(s().tabs).toHaveLength(1);
+    expect(s().activeId).toBe(newer);
+    expect(s().active()?.draft.name).toBe("Newer");
+  });
+
+  it("bounds recovery history and excludes collection-close operations", () => {
+    for (let i = 0; i < 21; i++) s().close(s().open(null, null, emptyRequest(String(i))));
+    expect(s().closedTabs).toHaveLength(20);
+    const id = s().open("/c", "/c/a.yaml", emptyRequest("A"));
+    s().close(id, false);
+    expect(s().closedTabs).toHaveLength(20);
+  });
+
+  it("follows renamed paths and forgets deleted files and closed collections", () => {
+    const id = s().open("/c", "/c/f/a.yaml", emptyRequest("A"));
+    s().close(id);
+    s().renamePath("/c/f", "/c/new");
+    expect(s().closedTabs[0].tab.path).toBe("/c/new/a.yaml");
+    s().refreshSaved("/c/new/a.yaml", emptyRequest("Renamed"));
+    expect(s().closedTabs[0].tab.draft.name).toBe("Renamed");
+    s().removePath("/c/new");
+    expect(s().closedTabs).toEqual([]);
+    s().close(s().open("/c", "/c/b.yaml", emptyRequest("B")));
+    s().close(s().open("/other", "/other/a.yaml", emptyRequest("Other")));
+    s().forgetClosed("/c");
+    expect(s().closedTabs.map(({ tab }) => tab.root)).toEqual(["/other"]);
   });
 
   it("re-points tabs inside a renamed folder", () => {

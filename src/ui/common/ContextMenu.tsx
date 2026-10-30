@@ -6,6 +6,7 @@ export interface MenuItem {
   onSelect: () => void;
   danger?: boolean;
   disabled?: boolean;
+  shortcut?: string;
 }
 export type MenuEntry = MenuItem | "separator";
 
@@ -60,13 +61,14 @@ export function ContextMenuHost() {
             key={i}
             type="button"
             disabled={item.disabled}
-            className={`block w-full px-3 py-1 text-left transition-colors hover:bg-hover active:bg-selected disabled:opacity-40 ${item.danger ? "text-danger" : ""}`}
+            className={`flex w-full items-center justify-between gap-6 px-3 py-1 text-left transition-colors hover:bg-hover active:bg-selected disabled:opacity-40 ${item.danger ? "text-danger" : ""}`}
             onClick={() => {
               hide();
               item.onSelect();
             }}
           >
-            {item.label}
+            <span>{item.label}</span>
+            {item.shortcut && <span className="text-[11px] text-muted">{item.shortcut}</span>}
           </button>
         ),
       )}

@@ -19,11 +19,13 @@ import {
   renameNode,
 } from "../actions";
 import { COLLAPSE_MS, Collapsible } from "../common/Collapsible";
-import { showMenu, type MenuEntry } from "../common/ContextMenu";
+import { showMenu, useContextMenu, type MenuEntry } from "../common/ContextMenu";
 import { Icon } from "../common/icons";
 import { methodColor, methodLabel } from "../common/methodColor";
 import { openExportDialog } from "../transfer/ExportDialog";
 import { useTreeExpand } from "./treeExpandContext";
+import { isMac, isPrimaryModifier } from "../useShortcuts";
+import { isDialogOpen } from "../common/dialogs";
 
 const DRAG_TYPE = "application/x-httptool-node";
 type DropMode = "into" | "before";
@@ -47,8 +49,8 @@ function nodeMenu(col: LoadedCollection, node: TreeNode): MenuEntry[] {
     );
   }
   items.push(
-    { label: "Rename", onSelect: () => renameNode(root, node) },
-    { label: "Duplicate", onSelect: () => duplicateNode(root, node) },
+    { label: "Rename", shortcut: "F2", onSelect: () => renameNode(root, node) },
+    { label: "Duplicate", shortcut: isMac ? "⌘D" : "Ctrl+D", onSelect: () => duplicateNode(root, node) },
     { label: "Export…", onSelect: () => openExportDialog(col, node) },
     "separator",
     { label: "Delete", danger: true, onSelect: () => deleteNode(root, node) },
@@ -134,6 +136,19 @@ function Row({ col, node, depth }: { col: LoadedCollection; node: TreeNode; dept
   return (
     <>
       <div
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.target !== e.currentTarget || e.altKey || e.shiftKey || e.nativeEvent.isComposing) return;
+          const rename = e.key === "F2" && !e.ctrlKey && !e.metaKey;
+          const duplicate = e.key.toLowerCase() === "d" && isPrimaryModifier(e);
+          if (!rename && !duplicate) return;
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.repeat || isDialogOpen()) return;
+          useContextMenu.getState().hide();
+          if (rename) void renameNode(col.root, node);
+          else void duplicateNode(col.root, node);
+        }}
         draggable={!filtering}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
@@ -141,8 +156,11 @@ function Row({ col, node, depth }: { col: LoadedCollection; node: TreeNode; dept
         onDrop={onDrop}
         onClick={onClick}
         onDoubleClick={() => node.type === "folder" && openNode(col.root, node)}
-        onContextMenu={onMenu}
-        className={`group relative flex h-7 cursor-pointer items-center gap-1 pr-1 transition-colors ${active ? "bg-selected" : "hover:bg-hover active:bg-selected"} ${drop === "into" ? "outline outline-1 -outline-offset-1 outline-accent" : ""}`}
+        onContextMenu={(e) => {
+          e.currentTarget.focus();
+          onMenu(e);
+        }}
+        className={`group relative flex h-7 cursor-pointer items-center gap-1 pr-1 transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-accent ${active ? "bg-selected" : "hover:bg-hover active:bg-selected"} ${drop === "into" ? "outline outline-1 -outline-offset-1 outline-accent" : ""}`}
         style={{ paddingLeft: 6 + depth * 14 }}
       >
         {drop === "before" && <div className="absolute inset-x-0 top-0 h-0.5 bg-accent" />}

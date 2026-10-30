@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 import { executeRequest } from "../core/execute";
-import { closeTab, newUntitledRequest, saveActiveTab } from "./actions";
+import { closeTab, newUntitledRequest, refreshCollections, saveActiveTab } from "./actions";
 import { useResponses } from "../state/responses";
 import { useSidebar } from "../state/sidebar";
 import { useTabs } from "../state/tabs";
 import { isDialogOpen } from "./common/dialogs";
 import { cycleBodyMode } from "./response/ResponseViewer";
 import { openSettings } from "./settings/SettingsDialog";
+import { focusRequestUrl } from "./editor/focusRequestUrl";
+import { openShortcutsHelp } from "./common/ShortcutsDialog";
 
 export const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
@@ -36,6 +38,29 @@ function sendActive() {
 
 export function useShortcuts() {
   useEffect(() => {
+    let refreshing = false;
+    const onReservedKey = (e: KeyboardEvent) => {
+      // Reserve these before CodeMirror's line-selection and comment keymaps.
+      const key = e.key.toLowerCase();
+      if (isPrimaryModifier(e) && !e.altKey && ((!e.shiftKey && (key === "l" || key === "/")) || (e.shiftKey && key === "t"))) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.repeat || e.isComposing || isDialogOpen()) return;
+        if (key === "l") focusRequestUrl();
+        else if (key === "t") useTabs.getState().reopenClosed();
+        else void openShortcutsHelp(isMac);
+        return;
+      }
+      // Reserve browser reload keys, including hard reload, before editors handle them.
+      if ((e.key === "F5" && !e.metaKey && !e.altKey) || (isPrimaryModifier(e) && !e.altKey && e.key.toLowerCase() === "r")) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!e.repeat && !e.isComposing && !isDialogOpen() && !refreshing) {
+          refreshing = true;
+          void refreshCollections().finally(() => { refreshing = false; });
+        }
+      }
+    };
     const onKey = (e: KeyboardEvent) => {
       // Ctrl+Tab is Ctrl on both platforms, so it sits outside the primary-modifier check.
       if (e.ctrlKey && !e.metaKey && !e.altKey && e.key === "Tab") {
@@ -76,7 +101,11 @@ export function useShortcuts() {
         if (!isDialogOpen()) stepTab(e.code === "BracketLeft" ? -1 : 1);
       }
     };
+    window.addEventListener("keydown", onReservedKey, true);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onReservedKey, true);
+      window.removeEventListener("keydown", onKey);
+    };
   }, []);
 }

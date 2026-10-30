@@ -106,6 +106,8 @@ export function CodeEditor({ value, onChange, language = "text", readOnly, singl
       height={singleLine ? undefined : "100%"}
       readOnly={readOnly}
       editable={!readOnly}
+      // Single-line fields use native Tab / Shift+Tab focus navigation.
+      indentWithTab={!singleLine}
       placeholder={placeholder}
       extensions={exts}
       basicSetup={
