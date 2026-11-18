@@ -30,7 +30,10 @@ Post: 컬렉션 → 바깥 폴더 → 안쪽 폴더 → 요청
 | `pm.sendRequest(req, callback)` | 스크립트 안에서 추가 요청. Promise로도 쓸 수 있다 |
 | `pm.info` | `eventName` (`prerequest`/`test`), `requestName` |
 | `console.log/info/warn/error/debug` | 콘솔 패널에 출력 |
-| `require("crypto-js")`, `require("lodash")`, `require("chai")` | 번들된 라이브러리. 그 밖의 모듈은 불러올 수 없다 |
+| `require(이름)` | 번들된 라이브러리: `crypto-js`, `lodash`, `chai`, `atob`, `btoa`, `jsrsasign`, `moment`, `uuid`, `buffer`, `url`, `xml2js`. 그 밖의 모듈은 불러올 수 없다 |
+| `CryptoJS`, `_`, `atob`, `btoa` | `require` 없이 쓰는 전역 (Postman과 같다) |
+
+`jsrsasign`부터 `xml2js`까지는 스크립트에 `require("이름")`이 있을 때만 실행 전에 불러온다. 그래서 이름을 문자열로 바로 적어야 한다. `require(변수)`로 부르면 오류가 난다.
 
 `pm.sendRequest`는 전역 네트워크 설정과 쿠키 저장소를 쓰지만, 컬렉션 인증은 붙이지 않는다.
 
@@ -59,6 +62,14 @@ const CryptoJS = require("crypto-js");
 const ts = Date.now().toString();
 const sig = CryptoJS.HmacSHA256(ts, pm.environment.get("secret")).toString();
 pm.request.headers.upsert({ key: "X-Signature", value: sig });
+
+// Pre-request: RS256 JWT(client assertion) 만들기
+const { KJUR } = require("jsrsasign");
+const now = Math.floor(Date.now() / 1000);
+const jwt = KJUR.jws.JWS.sign("RS256", { alg: "RS256", typ: "JWT" },
+  { iss: "client-id", aud: pm.environment.get("tokenUrl"), iat: now, exp: now + 300 },
+  pm.environment.get("privateKey"));
+pm.variables.set("assertion", jwt);
 
 // Post-response: 토큰 저장과 검증
 pm.test("200 OK", () => pm.response.to.have.status(200));

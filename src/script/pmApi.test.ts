@@ -121,6 +121,40 @@ describe("sandbox", () => {
     expect(out.logs[0].args).toEqual(["2d93cbc1", "3"]);
   });
 
+  it("signs an RS256 JWT with jsrsasign", async () => {
+    const { generateKeyPairSync } = await import("node:crypto");
+    const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048, privateKeyEncoding: { type: "pkcs8", format: "pem" }, publicKeyEncoding: { type: "spki", format: "pem" } });
+    const out = await runInline(`
+      const { KJUR, KEYUTIL } = require("jsrsasign");
+      const jwt = KJUR.jws.JWS.sign("RS256", { alg: "RS256", typ: "JWT" }, { sub: "me" }, ${JSON.stringify(privateKey)});
+      const pub = KEYUTIL.getKey(${JSON.stringify(publicKey)});
+      console.log(jwt.split(".").length, KJUR.jws.JWS.verify(jwt, pub, ["RS256"]));
+    `);
+    expect(out.error).toBeUndefined();
+    expect(out.logs[0].args).toEqual(["3", "true"]);
+  });
+
+  it("provides moment, uuid, buffer, url, xml2js, atob/btoa", async () => {
+    const out = await runInline(`
+      const moment = require("moment"); const { v4 } = require("uuid"); const { Buffer } = require("buffer");
+      const url = require("url"); const xml2js = require("xml2js");
+      const parsed = await xml2js.parseStringPromise("<a><b>1</b></a>");
+      console.log(moment.utc(0).format("YYYY"), v4().length, Buffer.from("hi").toString("base64"),
+        url.parse("http://x/y?q=1").pathname, parsed.a.b[0], require("btoa")("hi"), atob("aGk="));
+    `);
+    expect(out.error).toBeUndefined();
+    expect(out.logs[0].args).toEqual(["1970", "36", "aGk=", "/y", "1", "aGk=", "hi"]);
+  });
+
+  it("exposes CryptoJS and _ as globals", async () => {
+    const out = await runInline(`console.log(typeof CryptoJS.SHA256, _.sum([1, 2]))`);
+    expect(out.logs[0].args).toEqual(["function", "3"]);
+  });
+
+  it("lazy modules need a literal require name", async () => {
+    expect((await runInline(`const n = "moment"; require(n)`)).error).toMatch(/literal name/);
+  });
+
   it("hides network globals", async () => {
     const out = await runInline(`console.log(typeof fetch, typeof XMLHttpRequest, typeof WebSocket, typeof globalThis)`);
     expect(out.logs[0].args).toEqual(["undefined undefined undefined undefined".split(" ")].flat());
