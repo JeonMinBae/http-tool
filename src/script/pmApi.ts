@@ -1,5 +1,4 @@
 import { expect as chaiExpect } from "chai";
-import CryptoJS from "crypto-js";
 import lodash from "lodash";
 import type { Body } from "../core/model";
 import { interpolate, isListMarker, resolveVar, setScopeVar, visibleVars, type VarScope, type VarScopes } from "../core/variables";
@@ -9,7 +8,7 @@ export interface PmHooks {
   sendRequest(req: ScriptSendRequest): Promise<ScriptResponse>;
 }
 
-const MODULES: Record<string, unknown> = { "crypto-js": CryptoJS, lodash, chai: { expect: chaiExpect } };
+import { MODULE_NAMES } from "./modules";
 
 function stringify(v: unknown): string {
   if (typeof v === "string") return v;
@@ -85,7 +84,7 @@ function bodyApi(req: ScriptRequest) {
   };
 }
 
-export function createPm(input: ScriptInput, hooks: PmHooks) {
+export function createPm(input: ScriptInput, hooks: PmHooks, modules: Record<string, unknown>) {
   const scopes: VarScopes = structuredClone(input.scopes);
   const request: ScriptRequest = structuredClone(input.request);
   const tests: TestResult[] = [];
@@ -227,8 +226,9 @@ export function createPm(input: ScriptInput, hooks: PmHooks) {
   };
 
   const require = (name: string) => {
-    if (!Object.hasOwn(MODULES, name)) throw new Error(`Module "${name}" is not available. Available: ${Object.keys(MODULES).join(", ")}`);
-    return MODULES[name];
+    if (Object.hasOwn(modules, name)) return modules[name];
+    if (MODULE_NAMES.includes(name)) throw new Error(`Module "${name}" must be required with a literal name, e.g. require("${name}")`);
+    throw new Error(`Module "${name}" is not available. Available: ${MODULE_NAMES.join(", ")}`);
   };
 
   /** Resolves once every pending test and sendRequest (including ones started later) has settled. */
